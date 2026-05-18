@@ -123,6 +123,34 @@ async function step(name, file, args) {
   return r.stdout;
 }
 
+// run the copy linter and capture its report -> { ok, report }
+async function lintRun() {
+  const planPath = path.join(OUT, "plan.json");
+  return execFileP("node", [path.join(HERE, "lint-plan.js"), planPath], { cwd: OUT })
+    .then((r) => ({ ok: true, report: r.stdout }))
+    .catch((e) => ({ ok: false, report: `${e.stdout || ""}${e.stderr || ""}`.trim() }));
+}
+
+// hand codex the exact linter failures and fix ONLY the flagged slides —
+// the 11 good slides of a 12-slide plan are kept, not thrown away.
+async function fixPlan(report, articles) {
+  const planPath = path.join(OUT, "plan.json");
+  const prompt = [
+    "The carousel plan.json failed the copy linter. Fix ONLY the flagged slides.",
+    "Keep every other slide byte-identical — do NOT renumber, add, or drop slides.",
+    "Linter report (each FAIL block names a slide index and the problem):",
+    report,
+    "Rewrite rules for the flagged slides:",
+    "- A content BODY must add NEW concrete info: a real action to take, a",
+    "  number/timeframe, or an explained cause — never restate the headline.",
+    "- No vague payoff phrases, no teaser headlines.",
+    "- Stay factual; never invent a figure that is not in the sources.",
+    articles ? `Sources (cite, never invent figures):\n${articles}` : "",
+    `Rewrite ${planPath} in place as valid JSON. Reply DONE when written.`
+  ].filter(Boolean).join("\n");
+  await codex(prompt, ACCOUNT);
+}
+
 async function main() {
   await fs.mkdir(path.join(OUT, "slides"), { recursive: true });
 
@@ -130,45 +158,36 @@ async function main() {
   if (!ACCOUNT) {
     const { listUsableAccounts } = await import("./accounts.js");
     const pool = await listUsableAccounts();
-    if (!pool.length) {
-      console.error("no usable codex account in the pool");
-      process.exit(1);
-    }
+    if (!pool.length) throw new Error("no usable codex account in the pool");
     ACCOUNT = pool[Math.floor(Math.random() * pool.length)].email;
   }
 
   // 1. source material
   let articles = "";
   if (MODE === "news") {
-    try {
-      articles = await step("news", "news.js", ["--topic", TOPIC, "--limit", "8"]);
-    } catch (e) {
-      console.error(`news fetch failed — ${e.message}`);
-      process.exit(1);
-    }
+    articles = await step("news", "news.js", ["--topic", TOPIC, "--limit", "8"]);
   }
 
-  // 2. plan (one codex retry if the linter rejects it)
+  // 2. plan + copy-quality gate — targeted rewrites of only the flagged slides
   let plan = await writePlan(articles);
-  if (!plan) {
-    console.error("plan write failed");
-    process.exit(1);
-  }
+  if (!plan) throw new Error("plan write failed");
   let lintOk = false;
-  for (let attempt = 1; attempt <= 2 && !lintOk; attempt++) {
-    try {
-      await step("lint", "lint-plan.js", [path.join(OUT, "plan.json")]);
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    const lint = await lintRun();
+    if (lint.ok) {
       lintOk = true;
+      break;
+    }
+    if (attempt === 4) break;
+    await fixPlan(lint.report, articles);
+    try {
+      const p = JSON.parse(await fs.readFile(path.join(OUT, "plan.json"), "utf8"));
+      if (Array.isArray(p.slides) && p.slides.length >= 6) plan = p;
     } catch {
-      if (attempt === 1) {
-        await writePlan(articles); // codex rewrites once
-      }
+      /* a broken rewrite will be caught by the next lint pass */
     }
   }
-  if (!lintOk) {
-    console.error("plan failed the copy linter twice");
-    process.exit(1);
-  }
+  if (!lintOk) throw new Error("plan failed the copy linter");
 
   // 3. generate + finalise
   const genArgs = [path.join(OUT, "plan.json"), path.join(OUT, "slides")];
@@ -183,7 +202,14 @@ async function main() {
   console.log(`CAROUSEL DONE: ${contentId}`);
 }
 
-main().catch((e) => {
-  console.error("ERROR", e.message);
-  process.exit(1);
-});
+main()
+  .then(async () => {
+    // carousel is safely in GCS — drop the local copy so the burst disk
+    // never fills up with finished work.
+    await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
+  })
+  .catch(async (e) => {
+    console.error("ERROR", e.message);
+    await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
+    process.exit(1);
+  });

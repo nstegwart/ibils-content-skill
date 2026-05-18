@@ -89,6 +89,25 @@ function genTopics(mode, n, used, account) {
   });
 }
 
+// Sweep junk a SIGKILL'd session could not clean up itself: leaked codex
+// homes in /tmp, dead topic-gen homes, and orphaned out/ dirs. Age cutoffs are
+// generous so nothing in-flight is ever touched.
+function sweepStale() {
+  return new Promise((resolve) => {
+    const cmd = [
+      "find /tmp -maxdepth 1 \\( -name 'ibils-carousel-*' -o -name 'rc-*' \\)" +
+        " -mmin +75 -exec rm -rf {} + 2>/dev/null",
+      `find ${WORKDIR} -maxdepth 1 -name '.topgen-*' -mmin +20` +
+        " -exec rm -rf {} + 2>/dev/null",
+      `find ${WORKDIR}/out -mindepth 1 -maxdepth 1 -mmin +150` +
+        " -exec rm -rf {} + 2>/dev/null"
+    ].join("; ");
+    const c = spawn("bash", ["-c", cmd]);
+    c.on("close", () => resolve());
+    c.on("error", () => resolve());
+  });
+}
+
 async function launchSession(mode, topic, account, idx) {
   const out = path.join(WORKDIR, "out", `w${waveNo}-${mode}-${idx}-${Date.now()}`);
   const logFile = path.join(WORKDIR, "logs", `w${waveNo}-${mode}-${idx}.log`);
@@ -133,6 +152,7 @@ async function main() {
       log("STOP file found — no new batches; daemon exiting.");
       break;
     }
+    await sweepStale();
     const accounts = await listUsableAccounts();
     if (!accounts.length) {
       log("no usable account — waiting 60s");

@@ -224,6 +224,18 @@ function runCodex(slide, plan, total, home) {
       } catch {
         /* genuine failure */
       }
+      // keep this codex home tiny — wipe everything codex wrote this slide,
+      // keep only auth.json so the next slide reuses the same account. Without
+      // this a 16-slide carousel home grows to multiple GB in /tmp.
+      try {
+        for (const e of await fs.readdir(home)) {
+          if (e !== "auth.json") {
+            await fs.rm(path.join(home, e), { recursive: true, force: true });
+          }
+        }
+      } catch {
+        /* home already gone */
+      }
       resolve({ ok, accountDead: isAuthDead(buf) || isRateLimited(buf) });
     });
     child.stdin.end(buildPrompt(slide, plan, total));
