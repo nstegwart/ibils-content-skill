@@ -1,0 +1,172 @@
+#!/usr/bin/env node
+/**
+ * Copy linter — the mechanical gate that keeps carousel copy from going vague.
+ *
+ * Scans a plan.json and HARD-FAILS slides whose copy is dumb in a way a machine
+ * can prove: banned empty-payoff phrases, teaser headlines, a body too thin to
+ * carry information, or a body that just restates the headline. Weak-but-not-
+ * provable cases are reported as WARN for the human/codex self-review.
+ *
+ * Image generation must not start until this exits 0. gen-carousel.js runs it
+ * automatically; you can also run it by hand:
+ *   node lint-plan.js <plan.json>
+ *
+ * Exit 0 = clean. Exit 1 = at least one FAIL (or plan unreadable).
+ */
+import fs from "node:fs/promises";
+
+const PLAN_PATH = process.argv[2];
+if (!PLAN_PATH) {
+  console.error("usage: node lint-plan.js <plan.json>");
+  process.exit(1);
+}
+
+// Indonesian function words — stripped before measuring real content.
+const STOPWORDS = new Set([
+  "yang", "dan", "di", "ke", "dari", "untuk", "itu", "ini", "kamu", "atau",
+  "jadi", "biar", "supaya", "dengan", "pada", "ada", "akan", "tidak", "tak",
+  "juga", "saat", "agar", "bisa", "sudah", "lebih", "masih", "apa", "pun",
+  "kalau", "tapi", "karena", "sebab", "lalu", "saja", "aja", "nya", "mu", "ku",
+  "para", "se", "per", "oleh", "dalam", "antara", "kita", "kami", "mereka"
+]);
+
+// Empty payoff / generic phrases that carry no information.
+// Empty payoff phrases. Kept specific — a bare "jadi lebih" is NOT banned
+// because "jadi lebih mahal / berat" is concrete and legitimate.
+const BANNED = [
+  "lebih tenang", "lebih bijak", "lebih teratur", "lebih siap",
+  "hidup lebih baik", "biar tenang", "supaya tenang", "biar teratur",
+  "hal penting", "hal-hal penting", "langkah kecil", "catatan kecil",
+  "rasakan bedanya", "lebih terkontrol"
+];
+
+// Teaser headlines that hide the point instead of stating it.
+const TEASER = [
+  "ini rahasia", "rahasianya", "begini cara", "begini langkah", "ini dia",
+  "yang perlu kamu tahu", "yang harus kamu tahu", "wajib tahu", "simak",
+  "ini caranya", "ternyata begini"
+];
+
+// Concrete instruction verbs — a content body should usually tell you to DO
+// something. Matched loosely (prefix/suffix tolerant).
+const ACTION_ROOTS = [
+  "catat", "tulis", "buka", "cek", "periksa", "sisihkan", "pindah", "pilih",
+  "banding", "tandai", "henti", "stop", "jumlah", "hitung", "susun", "tunda",
+  "kurang", "beli", "masak", "simpan", "bagi", "pisah", "atur", "pasang",
+  "lacak", "batasi", "kumpul", "alih", "matikan", "hapus", "ganti", "mulai",
+  "lakukan", "sisakan", "bayar", "rapikan"
+];
+
+// Concrete number / time signals.
+const NUMBER_RE = /\d|\brp\b|persen|%|sebulan|seminggu|sehari|harian|bulanan|mingguan|tiap hari|tiap minggu|tiap bulan|akhir pekan|gajian/i;
+// Cause / mechanism / purpose connectors — mark an explanatory concrete body.
+const MECHANISM = ["karena", "sebab", "saat", "ketika", "sehingga", "akibat", "supaya", "agar"];
+
+function field(brief, name) {
+  const m = String(brief || "").match(new RegExp(`${name}:\\s*"([^"]*)"`, "i"));
+  return m ? m[1].trim() : "";
+}
+
+// crude Indonesian stem — drop common affixes so dibuka~buka, menarik~tarik.
+function stem(w) {
+  let s = w.toLowerCase();
+  s = s.replace(/^(memper|menge|meng|meny|mem|men|me|peng|pen|pem|ber|ter|di|ke|se)/, "");
+  s = s.replace(/(kannya|kanlah|annya|kan|nya|lah|an|i)$/, "");
+  return s.length >= 3 ? s : w.toLowerCase();
+}
+
+function contentWords(text) {
+  return String(text || "")
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+}
+
+function lintSlide(slide, idx) {
+  const fails = [];
+  const warns = [];
+  const headline = field(slide.brief, "HEADLINE");
+  const body = field(slide.brief, "BODY");
+  const hay = `${headline} ${body} ${slide.brief}`.toLowerCase();
+
+  if (slide.kind !== "closing" && !headline) {
+    fails.push("missing HEADLINE");
+  }
+  for (const p of BANNED) {
+    if (hay.includes(p)) fails.push(`banned vague phrase: "${p}"`);
+  }
+  for (const p of TEASER) {
+    if (headline.toLowerCase().includes(p)) fails.push(`teaser headline: "${p}"`);
+  }
+
+  // content slides carry a teaching BODY — judge it
+  if (slide.kind === "content") {
+    if (!body) {
+      fails.push("content slide has no BODY");
+    } else {
+      const bWords = contentWords(body);
+      if (bWords.length < 6) {
+        fails.push(`body too thin (${bWords.length} content words)`);
+      }
+      // restatement: how much does the body add beyond the headline?
+      const hStems = new Set(contentWords(headline).map(stem));
+      const newStems = [...new Set(bWords.map(stem))].filter((s) => !hStems.has(s));
+      if (newStems.length < 4) {
+        fails.push(`body restates headline (only ${newStems.length} new ideas)`);
+      }
+      // concreteness: a real instruction, a number, or an explained mechanism.
+      // A `di-` prefixed word is PASSIVE (describes a state) — it is not an
+      // instruction, so it does not count as a concrete action.
+      const hasAction = bWords.some(
+        (w) => !w.startsWith("di") && ACTION_ROOTS.some((r) => stem(w) === stem(r))
+      );
+      const hasNumber = NUMBER_RE.test(body);
+      const hasMechanism = MECHANISM.some((m) => body.toLowerCase().includes(m));
+      if (!hasAction && !hasNumber && !hasMechanism) {
+        fails.push(
+          "body is abstract — it states no action to take, no number, and no " +
+          "cause/mechanism. Rewrite it to tell the reader what to DO or explain WHY."
+        );
+      }
+    }
+  }
+  return { idx, kind: slide.kind, headline, fails, warns };
+}
+
+async function main() {
+  let plan;
+  try {
+    plan = JSON.parse(await fs.readFile(PLAN_PATH, "utf8"));
+  } catch (e) {
+    console.error(`cannot read plan: ${e.message}`);
+    process.exit(1);
+  }
+  if (!Array.isArray(plan.slides) || !plan.slides.length) {
+    console.error("plan has no slides");
+    process.exit(1);
+  }
+
+  let failCount = 0;
+  let warnCount = 0;
+  plan.slides.forEach((slide, i) => {
+    const r = lintSlide(slide, i + 1);
+    const tag = `slide ${String(r.idx).padStart(2, "0")} (${r.kind})`;
+    if (r.fails.length) {
+      failCount += r.fails.length;
+      console.log(`FAIL ${tag}: ${r.headline}`);
+      r.fails.forEach((f) => console.log(`  - ${f}`));
+    }
+    r.warns.forEach((w) => {
+      warnCount++;
+      console.log(`WARN ${tag}: ${w}`);
+    });
+  });
+
+  if (failCount) {
+    console.log(`\nlint: ${failCount} FAIL — rewrite the flagged copy, then re-run. Image generation blocked.`);
+    process.exit(1);
+  }
+  console.log(`lint: clean (${plan.slides.length} slides${warnCount ? `, ${warnCount} warn — review them` : ""})`);
+}
+
+main();
