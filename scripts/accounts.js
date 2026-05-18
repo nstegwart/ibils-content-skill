@@ -1,4 +1,4 @@
-// Codex account pool for the IBILS carousel skill — standalone (no project
+// Codex account pool for the Ibils carousel skill — standalone (no project
 // imports). Discovers every codex account on disk, picks usable ones, and
 // tracks a shared exhausted-set so a dead / rate-limited account is dropped.
 //

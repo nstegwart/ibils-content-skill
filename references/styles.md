@@ -1,4 +1,4 @@
-# Visual Styles & Image Prompt Blocks — IBILS Carousel
+# Visual Styles & Image Prompt Blocks — Ibils Carousel
 
 This file is the human-readable SPEC. The executable form is
 `scripts/gen-carousel.js`, which holds the same blocks as constants and renders
@@ -21,10 +21,10 @@ the phone's app-splash screen is the real iB mark, not an invented one.
 ```
 !!! ABSOLUTE RULE — READ FIRST !!!
 Do NOT draw a logo, a logo mark, a brand badge, an app-icon badge, or write
-the word 'IBILS' or 'Ibils' as a wordmark ANYWHERE on this slide. No brand
+the word 'Ibils' as a wordmark ANYWHERE on this slide. No brand
 name text. No corner badge. The TOP-RIGHT corner area (roughly 280 x 280 px)
 MUST stay plain, empty background — draw nothing there. The real logo is
-composited into the top-right afterwards; if you draw any logo or 'IBILS' text
+composited into the top-right afterwards; if you draw any logo or 'Ibils' text
 the slide is rejected.
 ```
 
@@ -75,7 +75,7 @@ restrained, editorial — a finished design asset.
 ## Block F — BRANDING
 
 ```
-BRANDING — the slide has NO drawn logo and NO 'IBILS' wordmark. Keep the
+BRANDING — the slide has NO drawn logo and NO 'Ibils' wordmark. Keep the
 TOP-RIGHT corner empty (the real logo is composited there). Only draw the
 footer: a small '@ibils.savy' handle bottom-left and the slide number
 bottom-right.
@@ -90,7 +90,7 @@ bottom-right.
 VISUAL STYLE — vintage financial NEWSPAPER / broadsheet. Aged off-white
 newsprint paper, fine halftone print texture, bold condensed serif headlines,
 thin column rules and hairline boxes, small dateline type. Palette: newsprint
-cream, black ink, deep IBILS green (#0E3B33), amber (#F2A93B). Urgent,
+cream, black ink, deep Ibils green (#0E3B33), amber (#F2A93B). Urgent,
 editorial, credible. Himel as a clean B&W manga inset.
 A red ink-stamp may appear ONLY when its symbol fits the slide's message
 (downward arrow = weakening rupiah, price tag = rising prices). If nothing
@@ -111,14 +111,14 @@ NOT a busy kids template, NO blobby speech bubbles. Himel as a clean B&W inset.
 ### marketing
 ```
 VISUAL STYLE — bold, clean, modern FINTECH-AD poster. ONE confident solid
-background (solid deep IBILS green OR solid cream — never muddy gradients). A
+background (solid deep Ibils green OR solid cream — never muddy gradients). A
 big crisp headline in clean bold type with strong hierarchy. ONE single accent
 only — one tidy halftone-dot patch OR one starburst. Flat, disciplined, high
-contrast, lots of intentional negative space. Palette: deep IBILS green, bright
+contrast, lots of intentional negative space. Palette: deep Ibils green, bright
 amber/yellow, cream, black. Premium like a polished app campaign — NOT a noisy
 comic explosion. Himel as a clean B&W inset.
 NO fabricated app UI — no phone showing a fake dashboard/charts/buttons. A
-phone may show ONLY the IBILS splash (green + iB logo + 'Ibils'). Prefer
+phone may show ONLY the Ibils splash (green + iB logo + 'Ibils'). Prefer
 illustrating the user's benefit or Himel's real action over drawing a phone.
 Use only real features from references/ibils-app.md.
 ```
@@ -127,7 +127,7 @@ Use only real features from references/ibils-app.md.
 ```
 VISUAL STYLE — artistic RETRO MANGA, 1980s-90s manga-magazine look. Bold black
 ink linework, heavy screentone halftone shading, dramatic speed lines, slightly
-aged off-register print texture. Palette: deep IBILS green (#0E3B33), warm cream
+aged off-register print texture. Palette: deep Ibils green (#0E3B33), warm cream
 (#FBF6E9), amber (#F2A93B), black ink. Himel is fully at home in the artwork.
 ```
 
@@ -153,7 +153,7 @@ For each slide build the prompt in this order:
 12. `Save it to: <NN>-<kind>.png`
 
 The CLOSING slide is never image-generated — `gen-carousel.js` copies the
-fixed `assets/closing-card.png` (Himel + phone + the real composited IBILS
+fixed `assets/closing-card.png` (Himel + phone + the real composited Ibils
 splash). Its logo can never be hallucinated.
 
 ## Pose discipline

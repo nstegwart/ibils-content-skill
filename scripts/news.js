@@ -78,7 +78,7 @@ async function fetchFeed(url) {
   try {
     const res = await fetch(url, {
       signal: ctrl.signal,
-      headers: { "user-agent": "IBILS-Carousel/1.0 (finance news RSS)" }
+      headers: { "user-agent": "Ibils-Carousel/1.0 (finance news RSS)" }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.text();

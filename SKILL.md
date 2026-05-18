@@ -1,13 +1,13 @@
 ---
 name: ibils-carousel
-description: "Generate a finished IBILS Instagram carousel (cover + content + closing) where every slide is fully rendered by the codex native image tool — text, mascot and all. Use when the user asks to create IBILS finance content / carousel / slides, or to turn the latest finance news into a posting. Fetches live Indonesian finance news from valid sources, writes a sourced content plan, then generates and finalises uniform 1080x1350 slides. Four modes: news, education, marketing, insight."
+description: "Generate a finished Ibils Instagram carousel (cover + content + closing) where every slide is fully rendered by the codex native image tool — text, mascot and all. Use when the user asks to create Ibils finance content / carousel / slides, or to turn the latest finance news into a posting. Fetches live Indonesian finance news from valid sources, writes a sourced content plan, then generates and finalises uniform 1080x1350 slides. Four modes: news, education, marketing, insight."
 ---
 
-# IBILS Carousel — full-bake content generator
+# Ibils Carousel — full-bake content generator
 
 Turns a topic (or the latest finance news) into a complete, posting-ready
 Instagram carousel. Every slide is ONE image rendered by codex's NATIVE image
-tool — headline, body, mascot and layout all baked in. Branding (the IBILS
+tool — headline, body, mascot and layout all baked in. Branding (the Ibils
 glass-card logo) is composited afterwards for pixel-perfect consistency.
 
 This skill uses the codex native image tool — NOT the `imagegen` skill and NOT
@@ -15,14 +15,14 @@ the OpenAI Image API. No `OPENAI_API_KEY` is needed.
 
 ## When to use
 
-- "Bikin konten / carousel IBILS soal <topik>"
+- "Bikin konten / carousel Ibils soal <topik>"
 - "Jadiin berita keuangan terbaru jadi slide"
-- Any request to produce IBILS finance slides in one of the four modes.
+- Any request to produce Ibils finance slides in one of the four modes.
 
 ## When NOT to use
 
 - Editing one existing image → use the `imagegen` skill.
-- Non-IBILS, non-finance image work.
+- Non-Ibils, non-finance image work.
 
 ## Inputs
 
@@ -96,7 +96,7 @@ Open the finalised slides and check, slide by slide:
 - all are exactly 1080x1350;
 - the glass-card logo sits identically in the TOP-RIGHT corner of every slide;
 - Himel is the same character, in a different pose per slide;
-- no codex-drawn logo and no 'IBILS' wordmark text anywhere;
+- no codex-drawn logo and no 'Ibils' wordmark text anywhere;
 - text is crisp, correctly spelled, no AI artefacts;
 - no invented numbers — every figure traces to `plan.json` sources.
 
@@ -116,19 +116,19 @@ fails so the user can regenerate just that one.
 - `scripts/finalize.js` — normalises slides to 1080x1350 + composites the logo.
 - `references/content-rules.md` — the content "tata bahasa" (non-negotiable).
 - `references/styles.md` — the 4 visual styles + fixed image-prompt blocks.
-- `references/ibils-app.md` — the real IBILS app features + the no-fake-UI
+- `references/ibils-app.md` — the real Ibils app features + the no-fake-UI
   visual rule (source of truth for `marketing` mode).
 - `assets/himel-pose-*.png` — 4 Himel identity references.
 - `assets/ibils-logo-card.png` — the glass-card logo, composited top-right on
   every slide.
 - `assets/closing-card.png` — the FIXED closing brand card (Himel + phone +
-  real IBILS splash); copied in as the last slide, never generated.
-- `assets/ibils-icon.svg` — the raw IBILS logo mark.
+  real Ibils splash); copied in as the last slide, never generated.
+- `assets/ibils-icon.svg` — the raw Ibils logo mark.
 
 ## Hard rules (never break)
 
 1. No hallucination — no number/stat/source that is not in the fetched material.
 2. Source unreachable → STOP and report; do not generate from guesses.
-3. Codex never draws the logo or the 'IBILS' wordmark — it is composited.
+3. Codex never draws the logo or the 'Ibils' wordmark — it is composited.
 4. Every slide is finalised to exactly 1080x1350.
 5. Himel: same character every slide, pose changes every slide.

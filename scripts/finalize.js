@@ -5,7 +5,7 @@
  * For every *.png in the given directory:
  *   1. PAD (never crop) to a 4:5 box using the slide's own edge colour, then
  *      resize to EXACTLY 1080x1350 — uniform carousel size, zero content lost.
- *   2. Composite the fixed IBILS glass-card logo into the top-left corner —
+ *   2. Composite the fixed Ibils glass-card logo into the top-RIGHT corner —
  *      pixel-identical branding on every slide.
  *
  * Requires ImageMagick (`magick`) on PATH.

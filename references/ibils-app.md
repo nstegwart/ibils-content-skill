@@ -1,6 +1,6 @@
-# IBILS app — real features (source of truth for `marketing` content)
+# Ibils app — real features (source of truth for `marketing` content)
 
-IBILS is a personal budgeting / money-tracking app (Indonesian market). Use
+Ibils is a personal budgeting / money-tracking app (Indonesian market). Use
 ONLY the features below for `marketing`-mode copy. Never invent a feature, a
 screen, a metric, or a UI that is not listed here.
 
@@ -37,9 +37,9 @@ investasi · Konversi mata uang.
 
 The skill has NO real app screenshots. Therefore:
 
-- NEVER draw a phone showing a fabricated IBILS app screen — no made-up
+- NEVER draw a phone showing a fabricated Ibils app screen — no made-up
   dashboard, no fake charts, no invented buttons, no fake numbers on a screen.
-- A phone may appear in ONE form only: showing the IBILS app SPLASH — a deep
+- A phone may appear in ONE form only: showing the Ibils app SPLASH — a deep
   green screen with the iB logo and the word "Ibils" — identical to the
   closing slide. Never a "feature screen".
 - Prefer NOT drawing a phone at all on content slides. Instead illustrate:

@@ -1,4 +1,4 @@
-# Content Rules — IBILS Carousel (non-negotiable)
+# Content Rules — Ibils Carousel (non-negotiable)
 
 These rules govern the WORDS on every slide. They are absolute. A carousel that
 breaks any rule below is rejected.
@@ -28,7 +28,7 @@ Four modes. Each has a fixed identity and its own visual style (see styles.md).
 |------|---------|------|
 | `news` | latest finance news → impact on the reader's wallet | urgent, credible |
 | `education` | budgeting / money concepts | calm, teaching |
-| `marketing` | the IBILS app's real features & user benefits | confident, product-forward |
+| `marketing` | the Ibils app's real features & user benefits | confident, product-forward |
 | `insight` | analysis of money habits & patterns | reflective, calm |
 
 Each mode has a FIXED kicker / section label — use it verbatim in the plan's
@@ -43,12 +43,12 @@ Each mode has a FIXED kicker / section label — use it verbatim in the plan's
 
 ### `marketing` mode — extra rules
 
-- Copy may ONLY describe real IBILS features. Read `references/ibils-app.md` and
+- Copy may ONLY describe real Ibils features. Read `references/ibils-app.md` and
   use that list — never invent a feature, screen, metric, or capability.
 - Focus on the feature AND the benefit it gives the user.
 - VISUAL: there are no app screenshots. NEVER show a phone with a fabricated
   app screen (fake dashboard / charts / buttons). A phone may appear only
-  showing the IBILS splash (green + iB logo + "Ibils"), exactly like the
+  showing the Ibils splash (green + iB logo + "Ibils"), exactly like the
   closing. Prefer illustrating the user's benefit or Himel doing the real
   action over drawing a phone at all. (See `ibils-app.md` "Visual rule".)
 
@@ -100,7 +100,7 @@ enforces this mechanically; the formula is how you pass it on the first try.
   | "Kenali uang masuk" | "Tulis semua sumber pemasukan bulananmu" |
   | "Cek sebelum belanja" | "Sebelum checkout, cek sisa anggaran kategori itu" |
 - No competitor brand names. No fear-mongering. No clickbait exaggeration.
-- IBILS is a budgeting app — never a bank, lender, or investment product.
+- Ibils is a budgeting app — never a bank, lender, or investment product.
 
 ## 5. Carousel structure
 
@@ -110,7 +110,7 @@ A carousel is exactly: 1 cover + N content slides + 1 closing slide.
 - Content slides: one concrete point each. Vary the layout across them
   (statement, list, one-big-number, numbered step) so the deck has rhythm.
 - Closing: a FIXED pre-built brand card (`assets/closing-card.png` — Himel, a
-  phone showing the real IBILS splash, the CTA). It is dropped in automatically
+  phone showing the real Ibils splash, the CTA). It is dropped in automatically
   and is never image-generated, so its logo can never be wrong. Still include
   it in the plan as `{ "kind": "closing" }` with empty `brief` and `pose` — the
   skill ignores them.
@@ -123,7 +123,7 @@ The content plan codex writes (before image generation) is JSON:
 {
   "mode": "news",
   "topic": "rupiah melemah",
-  "kicker": "IBILS NEWS",
+  "kicker": "Ibils NEWS",
   "sources": [{ "title": "...", "link": "...", "publisher": "..." }],
   "slides": [
     { "kind": "cover",   "brief": "HEADLINE: \"...\"", "pose": "..." },

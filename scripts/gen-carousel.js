@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate every raw slide of ONE IBILS carousel from a content plan.
+ * Generate every raw slide of ONE Ibils carousel from a content plan.
  *
  * One carousel rides ONE codex account (an isolated provisioned CODEX_HOME).
  * Each slide is rendered via `codex exec` with the Himel pose references
@@ -31,7 +31,7 @@ const HIMEL_REFS = ["hero", "explain", "invite", "alert"].map((p) =>
 );
 const LOGO_REF = path.join(ASSETS, "ibils-icon.svg");
 // the closing slide is a FIXED pre-built brand card — never image-generated,
-// so its IBILS logo is the real composited mark and can never be hallucinated.
+// so its Ibils logo is the real composited mark and can never be hallucinated.
 const CLOSING_CARD = path.join(ASSETS, "closing-card.png");
 
 const PLAN_PATH = process.argv[2];
@@ -50,9 +50,9 @@ const WANT_ACCOUNT = (() => {
 const HARD_RULE = [
   "!!! ABSOLUTE RULE — READ FIRST !!!",
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
-  "word 'IBILS' / 'Ibils' as a wordmark ANYWHERE. No corner badge. The",
+  "word 'Ibils' as a wordmark ANYWHERE. No corner badge. The",
   "top-RIGHT corner (~280x280 px) MUST stay plain empty background — the real",
-  "logo is composited there later. If you draw any logo or 'IBILS' text the",
+  "logo is composited there later. If you draw any logo or 'Ibils' text the",
   "slide is rejected."
 ].join("\n");
 
@@ -90,7 +90,7 @@ const NOT_AI = [
 ].join("\n");
 
 const BRANDING =
-  "BRANDING — draw NO logo and NO 'IBILS' wordmark. Top-RIGHT corner stays " +
+  "BRANDING — draw NO logo and NO 'Ibils' wordmark. Top-RIGHT corner stays " +
   "empty (the logo is composited there). Footer only: a small '@ibils.savy' " +
   "handle bottom-left and the slide number bottom-right.";
 
@@ -110,10 +110,10 @@ const RELEVANCE = [
 ].join("\n");
 
 const NO_FAKE_UI = [
-  "APP-UI RULE — there are NO real IBILS app screenshots. NEVER draw a phone",
+  "APP-UI RULE — there are NO real Ibils app screenshots. NEVER draw a phone",
   "showing a fabricated app screen: no made-up dashboard, no fake charts, no",
   "invented buttons, no fake numbers on a screen. A phone may appear ONLY",
-  "showing the IBILS SPLASH — a deep green screen with the iB logo and the word",
+  "showing the Ibils SPLASH — a deep green screen with the iB logo and the word",
   "'Ibils' (exactly like the closing). Prefer drawing NO phone at all on a",
   "content slide: illustrate the user's real-world benefit, or Himel doing the",
   "real action, or a simple symbolic object — not a screen."
@@ -124,7 +124,7 @@ const STYLES = {
     "VISUAL STYLE — vintage financial NEWSPAPER / broadsheet. Aged off-white " +
     "newsprint, fine halftone texture, bold condensed serif headlines, thin " +
     "column rules, small dateline type. Palette: newsprint cream, black ink, " +
-    "deep IBILS green #0E3B33, amber #F2A93B. A red ink-stamp may be used ONLY " +
+    "deep Ibils green #0E3B33, amber #F2A93B. A red ink-stamp may be used ONLY " +
     "if its symbol clearly fits THIS slide's message (e.g. a downward arrow " +
     "for a weakening rupiah, a price tag for rising prices). If no relevant " +
     "symbol fits, draw NO stamp — never a decorative or random stamp.",
@@ -136,14 +136,14 @@ const STYLES = {
     "cream, sage green, soft amber. Restrained and premium.",
   marketing:
     "VISUAL STYLE — bold clean modern FINTECH-AD poster. ONE solid background " +
-    "(solid deep IBILS green OR solid cream). Big crisp headline, strong " +
+    "(solid deep Ibils green OR solid cream). Big crisp headline, strong " +
     "hierarchy. ONE accent only — one halftone-dot patch or one starburst. " +
     "Flat, disciplined, high contrast, lots of negative space. Palette: deep " +
-    "IBILS green, bright amber/yellow, cream, black.",
+    "Ibils green, bright amber/yellow, cream, black.",
   insight:
     "VISUAL STYLE — artistic RETRO MANGA, 1980s-90s manga-magazine look. Bold " +
     "black ink linework, heavy screentone halftone shading, dramatic speed " +
-    "lines, aged off-register print texture. Palette: deep IBILS green #0E3B33, " +
+    "lines, aged off-register print texture. Palette: deep Ibils green #0E3B33, " +
     "warm cream #FBF6E9, amber #F2A93B, black ink."
 };
 
@@ -168,8 +168,8 @@ function buildPrompt(slide, plan, total) {
   if (slide.kind === "closing") {
     lines.push(
       "CLOSING LAYOUT — Himel beside a clean phone mockup in the centre. INSIDE",
-      "the phone screen draw the IBILS app splash: a deep IBILS-green screen",
-      "(#0E3B33), a small dynamic-island pill at top, and centred — the IBILS",
+      "the phone screen draw the Ibils app splash: a deep Ibils-green screen",
+      "(#0E3B33), a small dynamic-island pill at top, and centred — the Ibils",
       "logo (the iB hexagon monogram, the LAST attached reference image, in",
       "white), the word 'Ibils' bold white below it, and a faint small tagline",
       "'Atur uang harianmu'. Do NOT invent a different logo (no leaf, no other",
