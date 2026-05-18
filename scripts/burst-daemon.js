@@ -89,13 +89,15 @@ function genTopics(mode, n, used, account) {
   });
 }
 
-function launchSession(mode, topic, account, idx) {
+async function launchSession(mode, topic, account, idx) {
   const out = path.join(WORKDIR, "out", `w${waveNo}-${mode}-${idx}-${Date.now()}`);
   const logFile = path.join(WORKDIR, "logs", `w${waveNo}-${mode}-${idx}.log`);
+  const fh = await fs.open(logFile, "a");
   const child = spawn("node", [
     path.join(HERE, "run-carousel.js"),
     "--mode", mode, "--topic", topic, "--out", out, "--account", account.email
-  ], { stdio: ["ignore", "a", "a"], detached: false });
+  ], { stdio: ["ignore", fh.fd, fh.fd] });
+  child.on("close", () => fh.close().catch(() => {}));
   return child;
 }
 
@@ -111,7 +113,9 @@ async function launchBatch(slot, accounts) {
   }
   await appendLedger(mode, topics);
   // launch all sessions near-atomically
-  const jobs = topics.map((t, i) => launchSession(mode, t, account, i));
+  const jobs = await Promise.all(
+    topics.map((t, i) => launchSession(mode, t, account, i))
+  );
   let alive = jobs.length;
   jobs.forEach((c) => c.on("close", () => { alive--; }));
   log(`batch slot ${slot} WAVE ${waveNo}: ${jobs.length} sessions [${mode}] on ${account.email}`);
