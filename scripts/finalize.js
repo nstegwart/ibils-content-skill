@@ -101,7 +101,7 @@ async function main() {
         ]);
         await convert([
           file, STORE_BADGES,
-          "-gravity", "south", "-geometry", "+0+74", "-composite",
+          "-gravity", "south", "-geometry", "+150+100", "-composite",
           file
         ]);
         console.log(`${name}: 1080x1350 + logo + phone + store badges`);

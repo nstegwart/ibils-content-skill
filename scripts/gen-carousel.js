@@ -166,13 +166,17 @@ function buildPrompt(slide, plan, total) {
     lines.push(
       "CLOSING SLIDE — render it in the SAME category visual style as the other",
       "slides (this carousel's style). Draw ONLY: a short closing headline kept",
-      "entirely within the TOP ~230px band, and Himel in his pose at the BOTTOM-",
-      "LEFT. Fill the rest with the category's plain styled background.",
+      "entirely within the TOP ~230px band, and Himel at the BOTTOM-LEFT.",
+      "HIMEL POSE for the closing: a friendly SELF-CONTAINED pose inside the",
+      "left third of the slide — standing, or a small wave with one hand kept",
+      "close to his body. He must NOT reach, point, lean, or extend any arm/leg/",
+      "cape toward the centre or right — that whole area is reserved for a phone",
+      "composited later and any limb there will be covered.",
       "DO NOT draw a phone, a phone mockup, a logo, the iB mark, the word",
       "'Ibils', or any store badge. The centre / centre-right and the bottom",
-      "~190px MUST stay plain empty background — a phone mockup and the download",
-      "badges are composited there afterwards. If you draw a phone or logo, or",
-      "let the headline run below the top band, the slide is rejected."
+      "~190px MUST stay plain empty background. If you draw a phone or logo, let",
+      "the headline leave the top band, or let Himel cross into the centre, the",
+      "slide is rejected."
     );
   }
   lines.push(
