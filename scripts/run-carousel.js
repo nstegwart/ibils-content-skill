@@ -33,7 +33,7 @@ function arg(flag, def) {
 const MODE = arg("--mode", "news");
 const TOPIC = arg("--topic", "");
 const OUT = path.resolve(arg("--out", `./carousel-${MODE}-${Date.now()}`));
-const ACCOUNT = arg("--account", "");
+let ACCOUNT = arg("--account", ""); // resolved from the pool if not given
 // content slides 4-12 (carousel = count + cover + closing)
 const COUNT = Math.max(4, Math.min(12, Number(arg("--count", "")) ||
   (4 + Math.floor(Math.random() * 9))));
@@ -125,6 +125,17 @@ async function step(name, file, args) {
 
 async function main() {
   await fs.mkdir(path.join(OUT, "slides"), { recursive: true });
+
+  // 0. resolve a pool account — never use the (often unauthed) default ~/.codex
+  if (!ACCOUNT) {
+    const { listUsableAccounts } = await import("./accounts.js");
+    const pool = await listUsableAccounts();
+    if (!pool.length) {
+      console.error("no usable codex account in the pool");
+      process.exit(1);
+    }
+    ACCOUNT = pool[Math.floor(Math.random() * pool.length)].email;
+  }
 
   // 1. source material
   let articles = "";

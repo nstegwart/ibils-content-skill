@@ -46,7 +46,8 @@ async function readJson(file) {
   }
 }
 
-// Every codex account on disk. openai@vizz accounts are excluded (global rule).
+// Every codex account on disk (openai@vizz included — explicit user choice for
+// this burst).
 export async function discoverAccounts() {
   let files;
   try {
@@ -64,7 +65,7 @@ export async function discoverAccounts() {
     const email =
       payload.email ||
       file.replace(/\.json$/, "").replace(/\.(team|plus|free|api)$/, "");
-    if (!email || /^openai@vizz/i.test(email)) continue;
+    if (!email) continue;
     out.push({ email, accountPath, file });
   }
   return out;
