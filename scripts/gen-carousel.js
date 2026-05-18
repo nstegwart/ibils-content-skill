@@ -165,16 +165,14 @@ function buildPrompt(slide, plan, total) {
   if (slide.kind === "closing") {
     lines.push(
       "CLOSING SLIDE — render it in the SAME category visual style as the other",
-      "slides (this carousel's style). Centre: an iPhone-style phone mockup — a",
-      "rounded dark phone body with a small dynamic-island pill near the top.",
-      "INSIDE the phone screen draw the Ibils app splash: a deep green screen,",
-      "the iB hexagon logo (the LAST attached reference image, in white) and the",
-      "word 'Ibils' in bold white directly BELOW the logo. Do NOT invent another",
-      "logo (no leaf, no other mark). A short closing headline above the phone;",
-      "Himel beside the phone in his pose.",
-      "IMPORTANT: leave the BOTTOM ~170px of the slide COMPLETELY EMPTY — the",
-      "download badges are composited there afterwards. Do NOT draw any store",
-      "badge, 'Google Play', or 'App Store' yourself."
+      "slides (this carousel's style). Draw ONLY: a short closing headline near",
+      "the TOP, and Himel in his pose on the LEFT side. Fill the rest with the",
+      "category's plain styled background.",
+      "DO NOT draw a phone, a phone mockup, a logo, the iB mark, the word",
+      "'Ibils', or any store badge. Leave the CENTRE-RIGHT area and the BOTTOM",
+      "~190px as plain empty background — a phone mockup and the download badges",
+      "are composited there afterwards. If you draw a phone or logo, the slide",
+      "is rejected."
     );
   }
   lines.push(
@@ -191,7 +189,6 @@ function runCodex(slide, plan, total, home) {
   return new Promise((resolve) => {
     const out = path.join(OUT_DIR, `${slide.name}.png`);
     const imgs = [...HIMEL_REFS];
-    if (slide.kind === "closing") imgs.push(LOGO_REF);
     const iArgs = [];
     for (const img of imgs) iArgs.push("-i", img);
     const args = [

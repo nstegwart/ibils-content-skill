@@ -150,11 +150,10 @@ For each slide build the prompt in this order:
     reference pose: <slide.pose>.`
 11. cover only: `This is a COVER — headline only, no body paragraph. Do NOT draw
     an empty text panel or placeholder card.`
-12. closing only: `CLOSING — render in the category style. Centre: an iPhone-
-    style phone mockup with a dynamic-island pill; inside the screen the iB
-    logo (last attached reference) + the word 'Ibils' below it. Himel beside
-    the phone. Leave the bottom ~170px EMPTY for composited badges — draw no
-    store badge yourself.`
+12. closing only: `CLOSING — render in the category style: a short CTA headline
+    at the top, Himel on the LEFT, plain styled background. Draw NO phone, NO
+    logo, NO 'Ibils' wordmark, NO store badges. Leave the centre-right and the
+    bottom ~190px empty — the iPhone-splash and badges are composited later.`
 13. `Save it to: <NN>-<kind>.png`
 
 ## Pose discipline

@@ -109,12 +109,12 @@ A carousel is exactly: 1 cover + N content slides + 1 closing slide.
 - Cover: the hook headline — a clear, concrete statement. No body paragraph.
 - Content slides: one concrete point each. Vary the layout across them
   (statement, list, one-big-number, numbered step) so the deck has rhythm.
-- Closing: image-generated like the rest, in the SAME category visual style as
-  the carousel. It ALWAYS shows: an iPhone-style phone mockup; inside the phone
-  screen the iB logo with the word "Ibils" below it; Himel beside the phone; a
-  short CTA headline. The bottom strip is left empty — the Play Store / App
-  Store badges are composited there by `finalize.js` (never drawn by codex).
-  Give it a `brief` (a short CTA headline) and a `pose`.
+- Closing: codex draws ONLY the category-styled background + a short CTA
+  headline + Himel (left). It must NOT draw a phone, a logo, "Ibils", or store
+  badges. `finalize.js` then composites the real iPhone-splash (iPhone mockup +
+  the real iB logo + "Ibils") and the Play Store / App Store badges into the
+  reserved zones — so the logo is always the real mark, never hallucinated.
+  Give the closing a `brief` (a short CTA headline) and a `pose`.
 
 ## 6. Plan shape
 

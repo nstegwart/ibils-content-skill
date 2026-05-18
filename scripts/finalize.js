@@ -22,6 +22,7 @@ const execFileP = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LOGO_CARD = path.join(HERE, "..", "assets", "ibils-logo-card.png");
 const STORE_BADGES = path.join(HERE, "..", "assets", "store-badges.png");
+const CLOSING_PHONE = path.join(HERE, "..", "assets", "closing-phone.png");
 
 const DIR = process.argv[2];
 if (!DIR) {
@@ -68,15 +69,20 @@ async function main() {
     const file = path.join(DIR, name);
     try {
       await finalizeOne(file);
-      // closing slide: stamp the real store badges along the reserved bottom
-      // strip — guaranteed correct position and styling, never hallucinated.
+      // closing slide: composite the real iPhone-splash (real iB logo — never
+      // hallucinated) and the store badges into the reserved zones.
       if (name.includes("closing")) {
         await execFileP("magick", [
-          file, STORE_BADGES,
-          "-gravity", "south", "-geometry", "+0+72", "-composite",
+          file, CLOSING_PHONE,
+          "-gravity", "center", "-geometry", "+165-30", "-composite",
           file
         ]);
-        console.log(`${name}: 1080x1350 + logo + store badges`);
+        await execFileP("magick", [
+          file, STORE_BADGES,
+          "-gravity", "south", "-geometry", "+0+74", "-composite",
+          file
+        ]);
+        console.log(`${name}: 1080x1350 + logo + phone + store badges`);
       } else {
         console.log(`${name}: 1080x1350 + logo`);
       }
