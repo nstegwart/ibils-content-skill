@@ -108,13 +108,16 @@ function sweepStale() {
   });
 }
 
-async function launchSession(mode, topic, account, idx) {
+async function launchSession(mode, topic, idx) {
+  // No --account: each run-carousel self-picks a usable account from the pool.
+  // Pinning 50 sessions to one account instantly rate-limits it; spreading
+  // them across the ~100-account pool keeps sessions productive.
   const out = path.join(WORKDIR, "out", `w${waveNo}-${mode}-${idx}-${Date.now()}`);
   const logFile = path.join(WORKDIR, "logs", `w${waveNo}-${mode}-${idx}.log`);
   const fh = await fs.open(logFile, "a");
   const child = spawn("node", [
     path.join(HERE, "run-carousel.js"),
-    "--mode", mode, "--topic", topic, "--out", out, "--account", account.email
+    "--mode", mode, "--topic", topic, "--out", out
   ], { stdio: ["ignore", fh.fd, fh.fd] });
   child.on("close", () => fh.close().catch(() => {}));
   return child;
@@ -133,7 +136,7 @@ async function launchBatch(slot, accounts) {
   await appendLedger(mode, topics);
   // launch all sessions near-atomically
   const jobs = await Promise.all(
-    topics.map((t, i) => launchSession(mode, t, account, i))
+    topics.map((t, i) => launchSession(mode, t, i))
   );
   let alive = jobs.length;
   jobs.forEach((c) => c.on("close", () => { alive--; }));

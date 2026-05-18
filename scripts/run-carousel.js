@@ -21,6 +21,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
+import {
+  discoverAccounts, listUsableAccounts, provisionCodexHome,
+  markExhausted, isRateLimited, isAuthDead
+} from "./accounts.js";
 
 const execFileP = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -33,7 +37,8 @@ function arg(flag, def) {
 const MODE = arg("--mode", "news");
 const TOPIC = arg("--topic", "");
 const OUT = path.resolve(arg("--out", `./carousel-${MODE}-${Date.now()}`));
-let ACCOUNT = arg("--account", ""); // resolved from the pool if not given
+let ACCOUNT = arg("--account", ""); // resolved/rotated from the pool
+const triedAccounts = new Set();    // accounts already used (or burned) this run
 // content slides 4-12 (carousel = count + cover + closing)
 const COUNT = Math.max(4, Math.min(12, Number(arg("--count", "")) ||
   (4 + Math.floor(Math.random() * 9))));
@@ -54,38 +59,51 @@ function nanoid(n = 6) {
   return s;
 }
 
-// run codex once, capture stdout
-function codex(promptText, account) {
-  return new Promise(async (resolve) => {
-    const home = path.join(os.tmpdir(), `rc-${nanoid(8)}`);
-    if (account) {
-      const { provisionCodexHome } = await import("./accounts.js");
-      const { discoverAccounts } = await import("./accounts.js");
-      const acc = (await discoverAccounts()).find((a) => a.email === account);
+// pick a usable pool account not already tried this run
+async function pickAccount() {
+  const pool = (await listUsableAccounts())
+    .filter((a) => !triedAccounts.has(a.email));
+  const choice = pool[Math.floor(Math.random() * pool.length)];
+  return choice ? choice.email : null;
+}
+
+// run codex once as the current ACCOUNT; capture output -> { out, dead }.
+// `dead` means the account is rate-limited / auth-dead and should be rotated.
+function codex(promptText) {
+  return new Promise((resolve) => {
+    (async () => {
+      const home = path.join(os.tmpdir(), `rc-${nanoid(8)}`);
+      const acc = (await discoverAccounts()).find((a) => a.email === ACCOUNT);
       if (acc) await provisionCodexHome(home, acc);
-    }
-    const args = [
-      "exec", "-m", "gpt-5.5",
-      "-c", 'model_reasoning_effort="xhigh"', "-c", 'service_tier="fast"',
-      "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check",
-      "-C", OUT, "-"
-    ];
-    const env = { ...process.env, NO_COLOR: "1" };
-    if (account) env.CODEX_HOME = home;
-    const child = spawn("codex", args, { cwd: OUT, env, stdio: ["pipe", "pipe", "ignore"] });
-    let buf = "";
-    child.stdout.on("data", (d) => (buf += d.toString()));
-    const timer = setTimeout(() => child.kill("SIGKILL"), 6 * 60 * 1000);
-    child.on("close", async () => {
-      clearTimeout(timer);
-      await fs.rm(home, { recursive: true, force: true }).catch(() => {});
-      resolve(buf);
-    });
-    child.stdin.end(promptText);
+      const args = [
+        "exec", "-m", "gpt-5.5",
+        "-c", 'model_reasoning_effort="xhigh"', "-c", 'service_tier="fast"',
+        "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check",
+        "-C", OUT, "-"
+      ];
+      const env = { ...process.env, NO_COLOR: "1", CODEX_HOME: home };
+      const child = spawn("codex", args, {
+        cwd: OUT, env, stdio: ["pipe", "pipe", "pipe"]
+      });
+      let buf = "";
+      const grab = (d) => {
+        buf += d.toString();
+        if (buf.length > 200000) buf = buf.slice(-200000);
+      };
+      child.stdout.on("data", grab);
+      child.stderr.on("data", grab);
+      const timer = setTimeout(() => child.kill("SIGKILL"), 6 * 60 * 1000);
+      child.on("close", async () => {
+        clearTimeout(timer);
+        await fs.rm(home, { recursive: true, force: true }).catch(() => {});
+        resolve({ out: buf, dead: isRateLimited(buf) || isAuthDead(buf) });
+      });
+      child.stdin.end(promptText);
+    })();
   });
 }
 
-// ask codex to write the content plan; returns parsed plan or null
+// ask codex to write the content plan -> { plan, dead }
 async function writePlan(articles) {
   const planPath = path.join(OUT, "plan.json");
   const prompt = [
@@ -105,14 +123,16 @@ async function writePlan(articles) {
     `Write ONLY the JSON to the file: ${planPath}`,
     "Shape: {mode,topic,kicker,sources:[],slides:[...]}. Reply DONE when written."
   ].filter(Boolean).join("\n");
-  await codex(prompt, ACCOUNT);
+  const r = await codex(prompt);
   try {
     const plan = JSON.parse(await fs.readFile(planPath, "utf8"));
-    if (Array.isArray(plan.slides) && plan.slides.length >= 6) return plan;
+    if (Array.isArray(plan.slides) && plan.slides.length >= 6) {
+      return { plan, dead: false };
+    }
   } catch {
     /* invalid */
   }
-  return null;
+  return { plan: null, dead: r.dead };
 }
 
 async function step(name, file, args) {
@@ -148,19 +168,19 @@ async function fixPlan(report, articles) {
     articles ? `Sources (cite, never invent figures):\n${articles}` : "",
     `Rewrite ${planPath} in place as valid JSON. Reply DONE when written.`
   ].filter(Boolean).join("\n");
-  await codex(prompt, ACCOUNT);
+  await codex(prompt);
 }
 
 async function main() {
   await fs.mkdir(path.join(OUT, "slides"), { recursive: true });
 
-  // 0. resolve a pool account — never use the (often unauthed) default ~/.codex
-  if (!ACCOUNT) {
-    const { listUsableAccounts } = await import("./accounts.js");
-    const pool = await listUsableAccounts();
-    if (!pool.length) throw new Error("no usable codex account in the pool");
-    ACCOUNT = pool[Math.floor(Math.random() * pool.length)].email;
-  }
+  // 0. resolve a usable pool account. The daemon no longer pins one account
+  //    to a 50-session wave, so each session self-picks — spreading load
+  //    across the pool instead of instantly rate-limiting one account.
+  if (ACCOUNT) triedAccounts.add(ACCOUNT);
+  const usableNow = (await listUsableAccounts()).map((a) => a.email);
+  if (!ACCOUNT || !usableNow.includes(ACCOUNT)) ACCOUNT = await pickAccount();
+  if (!ACCOUNT) throw new Error("no usable codex account in the pool");
 
   // 1. source material
   let articles = "";
@@ -168,9 +188,23 @@ async function main() {
     articles = await step("news", "news.js", ["--topic", TOPIC, "--limit", "8"]);
   }
 
-  // 2. plan + copy-quality gate — targeted rewrites of only the flagged slides
-  let plan = await writePlan(articles);
+  // 2. plan — codex accounts rate-limit, so rotate accounts until one writes a
+  //    valid plan (a burned account is marked exhausted so the pool drains).
+  let plan = null;
+  for (let tryNo = 1; tryNo <= 4 && !plan; tryNo++) {
+    triedAccounts.add(ACCOUNT);
+    const r = await writePlan(articles);
+    plan = r.plan;
+    if (!plan && tryNo < 4) {
+      if (r.dead) await markExhausted(ACCOUNT).catch(() => {});
+      const next = await pickAccount();
+      if (!next) break;
+      ACCOUNT = next;
+    }
+  }
   if (!plan) throw new Error("plan write failed");
+
+  // 2b. copy-quality gate — targeted rewrites of only the flagged slides
   let lintOk = false;
   for (let attempt = 1; attempt <= 4; attempt++) {
     const lint = await lintRun();
