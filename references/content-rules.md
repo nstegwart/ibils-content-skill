@@ -53,6 +53,25 @@ Each mode has a FIXED kicker / section label — use it verbatim in the plan's
 | `marketing` | `Ibils App` |
 | `insight` | `Ibils Insight` |
 
+### Who reads this — the audience (applies to EVERY mode)
+
+IBILS users are YOUNG: gen-z & milenial, ~17-32 — fresh grad, first-jobber,
+mahasiswa, freelancer / pekerja gig, gaji UMR or gaji pertama. They RENT or
+live with parents (anak kos / ngontrak); they do NOT own a house. Their money
+is: jajan & nongkrong, kopi, makan di luar, ojol, langganan apps
+(Spotify/Netflix), paylater & pinjol, cicilan HP/gadget, gaji habis sebelum
+akhir bulan, FOMO / doom spending, side hustle, dana darurat, modal usaha kecil.
+
+Every carousel — whatever the topic — must land in THAT life. When the source
+news is a price or policy, bend the angle to a young renter's wallet, never a
+homeowner's or a parent's.
+- WRONG: "harga gula naik → budget dapur keluarga".
+  RIGHT: "harga naik → jajan, kopi & langganan kamu kena".
+- A topic that only matters to homeowners (KPR, beli rumah), pensioners, the
+  sick/elderly (biaya obat, rumah sakit), parents with school-age kids, or one
+  city's commuters (KRL / MRT / TransJakarta) is OFF-TARGET — re-angle it to
+  the young audience or drop it.
+
 ### `marketing` mode — extra rules
 
 - Copy may ONLY describe real Ibils features. Read `references/ibils-app.md` and

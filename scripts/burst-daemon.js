@@ -40,8 +40,9 @@ const MODES = ["news", "education", "marketing", "insight"];
 // genuinely add perspective, never petty one-off chores.
 const TOPIC_BRIEF = {
   news:
-    "a fresh Indonesian finance-news angle and its concrete impact on an " +
-    "ordinary reader's wallet",
+    "a fresh Indonesian finance-news angle bent to a YOUNG gen-z/milenial " +
+    "reader's wallet — their jajan, langganan, anak-kos budget, paylater, " +
+    "gaji pertama — never a homeowner's or a family kitchen's",
   education:
     "a substantive financial-literacy lesson on a concept that genuinely " +
     "changes how someone sees money — bunga majemuk, inflasi menggerus " +
@@ -92,12 +93,26 @@ function genTopics(mode, n, used, account) {
     await provisionCodexHome(home, account).catch(() => {});
     const recent = used.slice(-300).join("\n");
     const prompt = [
-      `Generate ${n} content topics for an IBILS "${mode}" Instagram carousel`,
-      `aimed at an ordinary Indonesian audience (gajian bulanan, gaji UMR, anak`,
-      `kos, cicilan, belanja bulanan, nabung, dana darurat, pinjol).`,
+      `Generate ${n} content topics for an IBILS "${mode}" Instagram carousel.`,
+      `AUDIENCE — IBILS users are YOUNG: gen-z and milenial, ~17-32 — fresh`,
+      `grad, first-jobber, mahasiswa, freelancer / pekerja gig, gaji UMR or`,
+      `gaji pertama. They RENT or live with parents (anak kos / ngontrak) —`,
+      `they do NOT own a house. Money life: jajan & nongkrong, kopi, makan di`,
+      `luar, ojol, langganan (Spotify/Netflix), paylater & pinjol, cicilan`,
+      `HP/gadget, gaji habis sebelum akhir bulan, FOMO / doom spending, side`,
+      `hustle, dana darurat, modal usaha kecil.`,
       `Each topic is ${TOPIC_BRIEF[mode] || TOPIC_BRIEF.education}.`,
-      `Each must be RELATABLE — a real person feels "ini soal uangku" — and`,
-      `worth reading. Write a concrete phrase of 4-9 words.`,
+      `Every topic MUST hit THAT young life — a real 22-year-old feels "ini`,
+      `gue". Write a concrete phrase of 4-9 words.`,
+      `HARD-EXCLUDE off-target topics:`,
+      `- life-stage too far: KPR / beli rumah, dana pensiun, warisan, biaya`,
+      `  sekolah / kuliah anak.`,
+      `- demographic mismatch: biaya obat / penyakit / rumah sakit / lansia,`,
+      `  dana qurban or kondangan as routine spending.`,
+      `- region-locked: KRL / MRT / TransJakarta — Jakarta-only. Frame`,
+      `  transport as "ongkos ngantor / ojol" for everyone instead.`,
+      `- household-mom framing: budget dapur keluarga, harga sembako buat`,
+      `  masak. If a price rises, angle it at jajan / langganan / kos budget.`,
       `AIM BIG: pick issues with real impact and depth that genuinely add`,
       `wawasan. REJECT petty one-off chores — "menyiapkan dana sertifikat`,
       `tanah hilang", "uang kondangan", "widget saldo" are exactly the kind`,
@@ -105,8 +120,8 @@ function genTopics(mode, n, used, account) {
       `A topic is an ANGLE only — it must NOT contain any specific number,`,
       `price, percentage, rupiah amount, or date. Those are unknown until the`,
       `news is fetched later; a number baked into a topic is fabricated and`,
-      `will contradict the real figure. e.g. "dolar melemah kerek harga obat"`,
-      `is OK; "dolar Rp17.500 kerek harga obat" is NOT.`,
+      `will contradict the real figure. e.g. "rupiah melemah bikin langganan`,
+      `makin mahal" is OK; "rupiah Rp17.500 ..." is NOT.`,
       `Do NOT duplicate or closely resemble any already-used topic:`,
       recent || "(none yet)",
       `Output EXACTLY ${n} topics, one per line, no numbering, no extra text.`
