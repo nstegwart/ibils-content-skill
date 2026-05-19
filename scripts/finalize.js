@@ -117,8 +117,14 @@ async function main() {
         // prompt. Repaint the badge strip with the slide's own background
         // colour (sampled from a clean right-edge pixel) so the store badges
         // sit on the background, never on a white box.
+        // AVERAGE a tall clean strip down the right edge (right of the phone
+        // zone) — a single-pixel sample can land on a dark texture fleck and
+        // fill the repaint rectangle with the wrong colour (brown-card bug).
         const bg = (
-          await identify(["-format", "%[pixel:p{1074,700}]", file])
+          await convert([
+            file, "-crop", "78x430+1000+520", "+repage",
+            "-scale", "1x1!", "-format", "%[pixel:p{0,0}]", "info:"
+          ])
         ).stdout.trim();
         // erase any card / panel / CTA box codex drew in the bottom band —
         // right of Himel (he sits bottom-left), above the footer line.
