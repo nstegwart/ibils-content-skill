@@ -44,6 +44,8 @@ if (!TARGET || TARGET.startsWith("--")) {
 }
 const ACCOUNT = arg("--account", "");
 const BUCKET = arg("--bucket", process.env.GCS_BUCKET || "ibils-carousel-content");
+// --no-upload: regenerate fully LOCALLY, do not touch Google Cloud Storage.
+const NO_UPLOAD = process.argv.includes("--no-upload");
 
 async function isDir(p) {
   try {
@@ -105,6 +107,11 @@ async function main() {
   await run("gen-carousel.js", genArgs);
   console.log("finalising ...");
   await run("finalize.js", [slidesDir]);
+  if (NO_UPLOAD) {
+    console.log(`\nDONE — regenerated locally: ${dir}`);
+    console.log("(not uploaded — open the slides/ folder to review)");
+    return;
+  }
   console.log(`uploading to gs://${BUCKET}/${contentId} ...`);
   await run("gcs-upload.js", [dir, contentId]);
   console.log(`\nDONE — regenerated gs://${BUCKET}/${contentId}/`);

@@ -39,6 +39,8 @@ const TOPIC = arg("--topic", "");
 const OUT = path.resolve(arg("--out", `./carousel-${MODE}-${Date.now()}`));
 let ACCOUNT = arg("--account", ""); // resolved/rotated from the pool
 const triedAccounts = new Set();    // accounts already used (or burned) this run
+// --no-upload: run fully LOCALLY — skip the GCS upload and keep the folder.
+const NO_UPLOAD = process.argv.includes("--no-upload");
 // content slides 5-7 (carousel = count + cover + closing = 7-9 slides).
 // Real human carousels run 6-9 slides total; a 14-slide deck on one narrow
 // topic turns repetitive and reads as AI padding.
@@ -253,7 +255,11 @@ async function main() {
   await step("gen", "gen-carousel.js", genArgs);
   await step("finalize", "finalize.js", [path.join(OUT, "slides")]);
 
-  // 4. upload
+  // 4. upload — skipped with --no-upload (local run: carousel stays in OUT)
+  if (NO_UPLOAD) {
+    console.log(`CAROUSEL DONE (local): ${OUT}`);
+    return;
+  }
   const contentId =
     `${new Date().toISOString().slice(0, 10)}-${slug(plan.topic || TOPIC || MODE)}-${nanoid()}`;
   await step("upload", "gcs-upload.js", [OUT, contentId]);
@@ -262,12 +268,12 @@ async function main() {
 
 main()
   .then(async () => {
-    // carousel is safely in GCS — drop the local copy so the burst disk
-    // never fills up with finished work.
-    await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
+    // a local run keeps its folder; an uploaded one is dropped so the burst
+    // disk never fills up with finished work.
+    if (!NO_UPLOAD) await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
   })
   .catch(async (e) => {
     console.error("ERROR", e.message);
-    await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
+    if (!NO_UPLOAD) await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
     process.exit(1);
   });
