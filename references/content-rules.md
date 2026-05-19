@@ -165,22 +165,37 @@ that makes content good. Match this voice exactly.
   same thing — never "uang dokter" in the headline and "dana darurat" in the
   body.
 
-### 4.2 HOOK — every headline provokes, never labels
+### 4.2 HOOK — every headline HITS A NERVE, never labels
 
 The cover AND every content headline must make a scrolling thumb STOP. A
-headline is one of: a blunt command, a warning, a myth it kills, a
-scary/surprising number, or a question that hits a real fear. NEVER a flat
-descriptive label.
+headline HITS: it names an uncomfortable truth, a denial the reader lives in,
+a contradiction they don't admit, or a consequence they quietly fear. It is
+one of — a blunt contrarian claim, a myth it kills, a named consequence, a
+scary REAL number, or a question that pokes a real fear.
 
-| weak — a label (REJECTED) | strong — a hook |
+- NEVER a flat descriptive label.
+- NEVER a soft instruction ("Ganti X dengan Y", "Atur Z", "Pisahkan A") — an
+  instruction belongs in the BODY; the headline lands the punch first.
+- Say the thing the reader avoids saying out loud. Menohok = it stings a
+  little because it's true.
+
+| weak — label / soft instruction (REJECTED) | strong — a hook that HITS |
 |---|---|
 | "Budget pakaian kerja tahunan" | "GAJI UMR: FIX BAKAL MISKIN?" |
 | "Strategi menyimpan dana darurat" | "NABUNG DOANG NGGAK BIKIN KAYA" |
-| "Mengatur pengeluaran bulanan" | "STOP FRUGAL LIVING" |
+| "Ganti traktir penuh dengan kontribusi" | "KAMU BUKAN BAIK HATI — CUMA TAKUT DIBILANG PELIT" |
+| "Aturan dibuat sebelum tekanan datang" | "TIAP DIAJAK, DOMPETMU YANG KALAH" |
 | "Pentingnya mencatat keuangan" | "NGAKU 'MASIH AMAN' PADAHAL CUMA NGIRA-NGIRA" |
-| "Utang pinjol meningkat" | "PINJOL INDONESIA TEMBUS RP101 TRILIUN" |
 
-Cover = the single sharpest hook, one line. Content headlines keep provoking.
+NO FORMULA REPETITION — a deck must not reuse one scaffold. Do NOT open more
+than ONE headline with the same word (e.g. "JANGAN", "STOP", "AWAS",
+"SIAP-SIAP", "CEK …"). Three "JANGAN …" headlines reads as a template, not a
+writer. Vary the attack across the deck: claim, myth-kill, question, named
+consequence, blunt number.
+
+PUNCH IN EVERY MODE — `insight` and `education` headlines hit just as hard as
+`news`. Keep them SHORT and striking; never let one drift into a long, calm,
+explainy sentence. The cover is the single sharpest line in the whole deck.
 
 ### 4.3 ARGUMENT — a carousel is ONE story, not loose facts
 

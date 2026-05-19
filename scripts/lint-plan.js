@@ -173,6 +173,25 @@ async function main() {
     });
   });
 
+  // deck-level: a first word repeated across 3+ headlines is a formulaic
+  // scaffold ("JANGAN ...", "STOP ...") — reads as a template, not a writer.
+  const firstWord = {};
+  for (const slide of plan.slides) {
+    const h = field(slide.brief, "HEADLINE").trim().toLowerCase();
+    if (!h) continue;
+    const w = h.split(/\s+/)[0].replace(/[^a-z]/g, "");
+    if (w) (firstWord[w] = firstWord[w] || []).push(h);
+  }
+  for (const [w, hs] of Object.entries(firstWord)) {
+    if (hs.length >= 3) {
+      failCount += 1;
+      console.log(
+        `FAIL deck: ${hs.length} headlines all start with "${w}" — formulaic ` +
+          "scaffold, vary the hooks (claim / myth-kill / question / number)"
+      );
+    }
+  }
+
   if (failCount) {
     console.log(`\nlint: ${failCount} FAIL — rewrite the flagged copy, then re-run. Image generation blocked.`);
     process.exit(1);
