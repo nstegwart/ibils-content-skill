@@ -25,15 +25,14 @@ const WORKDIR = path.resolve(process.argv[2] || path.join(os.homedir(), "ibils-b
 const LEDGER = path.join(WORKDIR, "topics-ledger.jsonl");
 const STOP = path.join(WORKDIR, "STOP");
 
-// 4 batches x 50 sessions = 200 concurrent carousels — one batch per account,
-// each batch topped up on a fresh account as its sessions drain (the tempo
-// the operator wants). The per-session account-spread in run-carousel.js
-// keeps the 200 sessions productive across the whole pool rather than
-// pinning 50 to one account; at this rate the ~106-account codex pool still
-// sawtooths between heavy output and rate-limit-reset troughs.
+// 4 batches x 8 sessions = 32 concurrent carousels. A full carousel costs
+// ~17 codex calls; 4x50=200 concurrent drained the whole ~106-account pool
+// in ~1h and stalled for hours. 32 concurrent keeps quota burn near the
+// codex reset rate so the burst produces a steady stream and never fully
+// stalls. run-carousel.js spreads each session across the pool.
 const BATCHES = 4;
-const SESSIONS_PER_BATCH = 50;
-const TOPUP_AT = 20;          // relaunch a batch when <=20 sessions remain
+const SESSIONS_PER_BATCH = 8;
+const TOPUP_AT = 3;           // relaunch a batch when <=3 sessions remain
 const MODES = ["news", "education", "marketing", "insight"];
 
 // what a good topic IS, per mode — keeps the burst off trivial niche topics
