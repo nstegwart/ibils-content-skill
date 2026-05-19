@@ -275,6 +275,12 @@ The content plan codex writes (before image generation) is JSON:
 - `brief`: the exact copy + layout hint for that slide. Spell text verbatim.
 - `pose`: Himel's context-matched action — must differ slide to slide and fit
   the slide's meaning.
+  - EXPRESSION RULE: every `pose` MUST state Himel's facial expression, and it
+    must match the slide's mood — "ekspresi cemas/waspada" on a warning,
+    "ekspresi tegas" on a correction, "ekspresi serius/muram" on a hard or
+    dark truth (utang, panik, uang habis), a smile ONLY on a genuinely
+    positive slide. Never leave the expression unstated; never write a smiling
+    Himel on a slide about debt, panic, or loss.
   - PROP RULE: if the pose has Himel hold a document, receipt, bill, list,
     card, phone or chart, write the pose as him PRESENTING it facing the
     viewer ("menunjukkan/mengangkat ... menghadap kamera"). Never write a

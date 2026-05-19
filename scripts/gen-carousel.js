@@ -63,6 +63,22 @@ const REFERENCE = [
   "character. Do NOT copy a reference pose — use the pose this slide specifies."
 ].join("\n");
 
+const EXPRESSION = [
+  "EXPRESSION — CRITICAL. The reference images lock Himel's IDENTITY ONLY",
+  "(face shape, hair, crown, scarf, outfit) — they do NOT lock his mood. Do",
+  "NOT copy the reference smile. Himel must ACT this slide: his face and body",
+  "language match the slide's emotion.",
+  "- slide warns of a risk -> concerned, serious, alert.",
+  "- slide exposes a problem or a hard/dark truth (debt, panic, money running",
+  "  out, getting trapped) -> worried, alarmed, grim — NOT smiling.",
+  "- slide corrects a mistake / gives a firm instruction -> firm, stern.",
+  "- slide is genuinely positive or a real win -> then, and only then, a",
+  "  confident smile.",
+  "A smiling Himel on a slide about debt, panic, loss or hardship is WRONG and",
+  "the slide is rejected. Read this slide's copy and pose, then draw the",
+  "matching expression."
+].join("\n");
+
 const FORMAT = [
   "FORMAT — vertical Instagram carousel slide, portrait 4:5, exactly 1080x1350.",
   "SAFE MARGIN — EVERY important element must sit at least 8% inside every",
@@ -158,7 +174,7 @@ function buildPrompt(slide, plan, total) {
     "Use your built-in NATIVE image-generation tool directly (no API key, no",
     "imagegen skill, no python). Generate ONE complete, finished Instagram",
     "carousel SLIDE as a single image — headline, body text and mascot designed in.",
-    "", HARD_RULE, "", REFERENCE, "", style, "", BRANDING,
+    "", HARD_RULE, "", REFERENCE, "", EXPRESSION, "", style, "", BRANDING,
     `Kicker / section label — render it EXACTLY as written, keep this mixed`,
     `case, do NOT uppercase it: "${plan.kicker}".`,
     "", FORMAT, "", NO_INVENT, "", NOT_AI, "", PROP_RULE, "", NO_FAKE_UI, "",
