@@ -39,9 +39,11 @@ const TOPIC = arg("--topic", "");
 const OUT = path.resolve(arg("--out", `./carousel-${MODE}-${Date.now()}`));
 let ACCOUNT = arg("--account", ""); // resolved/rotated from the pool
 const triedAccounts = new Set();    // accounts already used (or burned) this run
-// content slides 4-12 (carousel = count + cover + closing)
-const COUNT = Math.max(4, Math.min(12, Number(arg("--count", "")) ||
-  (4 + Math.floor(Math.random() * 9))));
+// content slides 5-7 (carousel = count + cover + closing = 7-9 slides).
+// Real human carousels run 6-9 slides total; a 14-slide deck on one narrow
+// topic turns repetitive and reads as AI padding.
+const COUNT = Math.max(5, Math.min(8, Number(arg("--count", "")) ||
+  (5 + Math.floor(Math.random() * 3))));
 
 const KICKERS = {
   news: "Ibils News", education: "Ibils Education",

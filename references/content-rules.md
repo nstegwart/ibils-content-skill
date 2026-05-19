@@ -173,7 +173,10 @@ friend?"* If not, the angle is too thin — pick a better one.
 ## 5. Carousel structure
 
 A carousel is exactly: 1 cover + N content slides + 1 closing slide.
-- Default N = 10 (12 slides total). The user may ask for fewer.
+- KEEP IT TIGHT — 7-9 slides total (N = 5-7 content). Real human carousels are
+  short. Every slide must earn its place and move the argument FORWARD; if two
+  slides make the same point, cut one. A long deck that circles one narrow
+  point is the #1 "AI-generated" tell — never pad to fill slides.
 - Cover: the sharpest hook (§4.2) — one line, no body paragraph.
 - Content slides: each is one beat of the single argument (§4.3), flowing into
   the next. Vary the layout (statement, list, one-big-number, numbered step)
