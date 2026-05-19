@@ -104,7 +104,7 @@ async function main() {
         await convert([
           file,
           "-fill", bg || "black",
-          "-draw", "rectangle 312,1124 1068,1262",
+          "-draw", "rectangle 318,1090 1086,1292",
           file
         ]);
         await convert([
