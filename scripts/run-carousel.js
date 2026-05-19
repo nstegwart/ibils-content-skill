@@ -86,9 +86,16 @@ function codex(promptText) {
         cwd: OUT, env, stdio: ["pipe", "pipe", "pipe"]
       });
       let buf = "";
+      let killedForLimit = false;
       const grab = (d) => {
         buf += d.toString();
         if (buf.length > 200000) buf = buf.slice(-200000);
+        // kill a rate-limited / auth-dead call immediately instead of letting
+        // it hang to the 6-min timeout — the plan stage then rotates fast.
+        if (!killedForLimit && (isRateLimited(buf) || isAuthDead(buf))) {
+          killedForLimit = true;
+          child.kill("SIGKILL");
+        }
       };
       child.stdout.on("data", grab);
       child.stderr.on("data", grab);

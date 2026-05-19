@@ -217,9 +217,17 @@ function runCodex(slide, plan, total, home) {
       stdio: ["pipe", "pipe", "pipe"]
     });
     let buf = "";
+    let killedForLimit = false;
     const grab = (d) => {
       buf += d.toString();
       if (buf.length > 200000) buf = buf.slice(-200000);
+      // a rate-limited / auth-dead codex call otherwise hangs until the
+      // 9-min SIGKILL — kill it the moment the limit message appears so the
+      // carousel rotates to the next account in seconds, not minutes.
+      if (!killedForLimit && (isRateLimited(buf) || isAuthDead(buf))) {
+        killedForLimit = true;
+        child.kill("SIGKILL");
+      }
     };
     child.stdout.on("data", grab);
     child.stderr.on("data", grab);
