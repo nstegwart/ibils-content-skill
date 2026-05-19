@@ -262,7 +262,10 @@ async function main() {
   }
   const contentId =
     `${new Date().toISOString().slice(0, 10)}-${slug(plan.topic || TOPIC || MODE)}-${nanoid()}`;
-  await step("upload", "gcs-upload.js", [OUT, contentId]);
+  // UPLOAD_TARGET=drive -> Google Drive (rclone); else Google Cloud Storage.
+  const uploadScript =
+    process.env.UPLOAD_TARGET === "drive" ? "drive-upload.js" : "gcs-upload.js";
+  await step("upload", uploadScript, [OUT, contentId]);
   console.log(`CAROUSEL DONE: ${contentId}`);
 }
 
