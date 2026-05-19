@@ -134,6 +134,13 @@ that makes content good. Match this voice exactly.
 - No forced or cringe wordplay. A clever line is allowed ONLY if it lands
   instantly and a normal reader gets it (BROKEN: "ini namanya kurs nyasar ke
   struk" — forced, unclear). If a line is not instantly clear, write it plain.
+- Use STANDARD, instantly-clear Indonesian money terms. NEVER invent a casual
+  label for a financial concept that the reader has to guess at — BROKEN:
+  "uang dokter" for a health/emergency fund (a real reader did not understand
+  it). Call things by their normal name: "dana darurat", "uang belanja",
+  "dana investasi". The headline and the body MUST use the SAME word for the
+  same thing — never "uang dokter" in the headline and "dana darurat" in the
+  body.
 
 ### 4.2 HOOK — every headline provokes, never labels
 
