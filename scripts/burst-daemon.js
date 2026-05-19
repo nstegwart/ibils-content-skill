@@ -94,6 +94,11 @@ function genTopics(mode, n, used, account) {
       `Each must be RELATABLE — a real person feels "ini soal uangku" — and`,
       `worth reading, never a petty niche expense. Write a concrete phrase of`,
       `4-9 words, specific enough to teach ONE clear, useful thing.`,
+      `A topic is an ANGLE only — it must NOT contain any specific number,`,
+      `price, percentage, rupiah amount, or date. Those are unknown until the`,
+      `news is fetched later; a number baked into a topic is fabricated and`,
+      `will contradict the real figure. e.g. "dolar melemah kerek harga obat"`,
+      `is OK; "dolar Rp17.500 kerek harga obat" is NOT.`,
       `Do NOT duplicate or closely resemble any already-used topic:`,
       recent || "(none yet)",
       `Output EXACTLY ${n} topics, one per line, no numbering, no extra text.`

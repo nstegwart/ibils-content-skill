@@ -9,6 +9,14 @@ breaks any rule below is rejected.
   come from a fetched news item or from material the user explicitly supplied.
 - If the copy has no sourced number, the slide carries no number. Never invent
   one to "look complete".
+- NUMBER CONSISTENCY — every figure across the whole carousel (cover,
+  headlines, bodies) must be the SAME real figure from the source. Never put a
+  rounded or approximate number in the hook that a later slide then
+  contradicts (BROKEN: cover "DOLAR RP17.500" but body "Rp17.726"). Use the
+  exact sourced figure everywhere; if it is awkward in the hook, the hook
+  carries NO number.
+- The `topic` is only an angle — if it contains a number, IGNORE that number
+  and use the real figure from the fetched news instead.
 - Never invent a source, a publisher, a survey, or a quote.
 - If a referenced source (RSS feed, link) cannot be fetched: STOP. Report it.
   Offer manual mode. Do not generate from guesses.
@@ -93,6 +101,11 @@ that makes content good. Match this voice exactly.
 - English finance terms are fine when natural (cashflow, side hustle, compound
   interest, frugal living, outstanding) — but explain each in plain Indonesian
   the first time it appears.
+- State claims DIRECT — no hedge words ("disebut", "katanya", "kabarnya",
+  "mungkin"). The rupiah weakened; do not write "rupiah disebut melemah".
+- No forced or cringe wordplay. A clever line is allowed ONLY if it lands
+  instantly and a normal reader gets it (BROKEN: "ini namanya kurs nyasar ke
+  struk" — forced, unclear). If a line is not instantly clear, write it plain.
 
 ### 4.2 HOOK — every headline provokes, never labels
 
