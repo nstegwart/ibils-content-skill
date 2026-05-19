@@ -52,7 +52,48 @@ Each mode has a FIXED kicker / section label — use it verbatim in the plan's
   closing. Prefer illustrating the user's benefit or Himel doing the real
   action over drawing a phone at all. (See `ibils-app.md` "Visual rule".)
 
+### `education` mode — extra rules
+
+Education must genuinely TEACH a money concept with real reasoning — never a
+list of petty one-off budget items.
+
+- Each education carousel teaches ONE substantive concept and the WHY behind
+  it: dana darurat (berapa kali pengeluaran & alasannya), bunga majemuk,
+  inflasi gaya hidup (lifestyle creep), kebutuhan vs keinginan, sinking fund,
+  aturan 50/30/20, "bayar dirimu duluan", biaya peluang, utang baik vs buruk.
+- Anchor the lesson in the IDEA of a well-known personal-finance book, named
+  plainly: *"Buku 'Die With Zero' (Bill Perkins): ..."*, *"'The Psychology of
+  Money' (Morgan Housel): ..."*, *"'The Richest Man in Babylon': bayar dirimu
+  dulu 10%..."*, *"'Your Money or Your Life': hitung harga barang dalam jam
+  kerja."* Use the book's REAL, widely-known thesis in plain Indonesian — never
+  invent a quote, page number, or statistic.
+- Every content slide explains the mechanism, then gives a concrete way to
+  apply it — a number, a rule, or a model the reader runs on their own money.
+
 ## 4. Copy conventions ("tata bahasa") — CONCRETE, NEVER VAGUE
+
+### Every carousel must be WORTH a follower's time
+
+"Not vague" is not enough — content can be concrete and still worthless. Every
+carousel must first clear this bar; one that fails it is rejected:
+
+- **Relatable** — it speaks to a real, common money situation an ordinary
+  Indonesian lives: gajian & akhir bulan, gaji pas-pasan/UMR, THR, anak kos,
+  cicilan motor/HP, belanja bulanan, pinjol, BPJS, biaya nikah, nabung, dana
+  darurat. The reader must feel *"ini soal uangku"*. Never a niche one-off
+  ("anggaran alat tulis anak", "dana servis sepeda anak").
+- **One real lesson** — it teaches ONE money idea the reader probably has not
+  fully thought through and explains WHY it works. Advice everyone already
+  knows ("catat pengeluaranmu", "kurangi jajan") is not a lesson.
+- **Clear takeaway** — after the last slide the reader can name one specific
+  thing they now understand or will do, with a number or rule attached.
+- **Hook cover** — the cover states a real tension or a concrete, slightly
+  counterintuitive truth that stops the scroll, not a flat label.
+  - weak: "Budget pakaian kerja tahunan"
+  - strong: "Gaji naik tapi saldo akhir bulan tetap nol — ini sebabnya"
+
+Whole-plan self-test: *"Would a real person screenshot this or send it to a
+friend?"* If not, the angle is too thin — choose a better one.
 
 ### Writing formula — fill it, do not freestyle
 
@@ -99,6 +140,11 @@ enforces this mechanically; the formula is how you pass it on the first try.
   | "Atur uang biar lebih tenang" | "Sisihkan 20% gaji ke tabungan saat gajian" |
   | "Kenali uang masuk" | "Tulis semua sumber pemasukan bulananmu" |
   | "Cek sebelum belanja" | "Sebelum checkout, cek sisa anggaran kategori itu" |
+  | "Rencanakan makan dari agenda keluarga" | "Tulis menu 7 hari tiap Minggu, belanja sekali untuk daftar itu" |
+- Pseudo-concrete test: a sentence can sound like an instruction yet still be
+  empty. If a stranger reads ONLY the body and cannot say the exact thing to
+  do, it FAILS — e.g. "Rencanakan makan dari agenda keluarga" names no real
+  action. Name the action, the thing, and the when/how-much.
 - No competitor brand names. No fear-mongering. No clickbait exaggeration.
 - Ibils is a budgeting app — never a bank, lender, or investment product.
 

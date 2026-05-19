@@ -94,6 +94,19 @@ async function main() {
       // closing slide: composite the real iPhone-splash (real iB logo — never
       // hallucinated) and the store badges into the reserved zones.
       if (name.includes("closing")) {
+        // codex often draws a white CTA card in the bottom band despite the
+        // prompt. Repaint the badge strip with the slide's own background
+        // colour (sampled from a clean right-edge pixel) so the store badges
+        // sit on the background, never on a white box.
+        const bg = (
+          await identify(["-format", "%[pixel:p{1074,700}]", file])
+        ).stdout.trim();
+        await convert([
+          file,
+          "-fill", bg || "black",
+          "-draw", "rectangle 312,1124 1068,1262",
+          file
+        ]);
         await convert([
           file, CLOSING_PHONE,
           "-gravity", "center", "-geometry", "+150+70", "-composite",

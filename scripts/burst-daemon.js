@@ -35,6 +35,26 @@ const SESSIONS_PER_BATCH = 12;
 const TOPUP_AT = 4;           // relaunch a batch when <=4 sessions remain
 const MODES = ["news", "education", "marketing", "insight"];
 
+// what a good topic IS, per mode — keeps the burst off trivial niche topics
+const TOPIC_BRIEF = {
+  news:
+    "a fresh Indonesian finance-news angle and its concrete impact on an " +
+    "ordinary reader's wallet",
+  education:
+    "a substantive personal-finance LESSON — a real money concept (dana " +
+    "darurat, bunga majemuk, inflasi gaya hidup, kebutuhan vs keinginan, " +
+    "sinking fund, aturan 50/30/20, bayar diri sendiri dulu, biaya peluang, " +
+    "utang baik vs buruk) or the core idea of a well-known finance book (Die " +
+    "With Zero, The Psychology of Money, The Richest Man in Babylon, Your " +
+    "Money or Your Life) — never a trivial one-off expense",
+  marketing:
+    "a real Ibils budgeting-app feature framed by the concrete benefit it " +
+    "gives the user",
+  insight:
+    "a reflective look at a common Indonesian money habit or pattern and why " +
+    "it happens"
+};
+
 let modeCursor = 0;
 let acctCursor = 0;
 let waveNo = 0;
@@ -66,10 +86,14 @@ function genTopics(mode, n, used, account) {
     await provisionCodexHome(home, account).catch(() => {});
     const recent = used.slice(-300).join("\n");
     const prompt = [
-      `Generate ${n} DISTINCT, specific Indonesian personal-finance content`,
-      `topics for an IBILS "${mode}" Instagram carousel. Each topic is a short`,
-      `concrete phrase (3-8 words). They must NOT duplicate or closely resemble`,
-      `any of these already-used topics:`,
+      `Generate ${n} content topics for an IBILS "${mode}" Instagram carousel`,
+      `aimed at an ordinary Indonesian audience (gajian bulanan, gaji UMR, anak`,
+      `kos, cicilan, belanja bulanan, nabung, dana darurat, pinjol).`,
+      `Each topic is ${TOPIC_BRIEF[mode] || TOPIC_BRIEF.education}.`,
+      `Each must be RELATABLE — a real person feels "ini soal uangku" — and`,
+      `worth reading, never a petty niche expense. Write a concrete phrase of`,
+      `4-9 words, specific enough to teach ONE clear, useful thing.`,
+      `Do NOT duplicate or closely resemble any already-used topic:`,
       recent || "(none yet)",
       `Output EXACTLY ${n} topics, one per line, no numbering, no extra text.`
     ].join("\n");

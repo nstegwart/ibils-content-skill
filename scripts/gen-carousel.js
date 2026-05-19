@@ -64,9 +64,17 @@ const REFERENCE = [
 ].join("\n");
 
 const FORMAT = [
-  "FORMAT — vertical Instagram carousel slide, portrait 4:5, around 1080x1350.",
-  "Keep all text, the footer and the mascot's head/crown at least 9% inside",
-  "every edge. All text is real typography, spelled EXACTLY, in Indonesian.",
+  "FORMAT — vertical Instagram carousel slide, portrait 4:5, exactly 1080x1350.",
+  "SAFE MARGIN — EVERY important element must sit at least 8% inside every",
+  "edge: all text, the footer, the kicker, AND the COMPLETE mascot — his whole",
+  "body, both arms, both hands, both boots, crown and cape — plus every prop he",
+  "holds. NOTHING may be clipped by the canvas edge: not an arm, not a hand,",
+  "not a held object, not a boot, not a letter. If the mascot or a prop does",
+  "not fit, draw them SMALLER so the whole figure is inside the frame — a",
+  "cut-off mascot or cropped prop means the slide is rejected.",
+  "Compose edge-to-edge: the background fills the whole 1080x1350 with no",
+  "inner border, frame, or empty margin band around the artwork.",
+  "All text is real typography, spelled EXACTLY, in Indonesian.",
   "No watermark, no signature, no extra text."
 ].join("\n");
 
