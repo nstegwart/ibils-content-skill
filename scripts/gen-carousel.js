@@ -297,52 +297,51 @@ async function main() {
     process.exit(1);
   }
   const homeBase = await fs.mkdtemp(path.join(os.tmpdir(), "ibils-carousel-"));
-  console.log(`carousel ${plan.mode}/${plan.topic || ""} — per-slide account rotation`);
+  console.log(`carousel ${plan.mode}/${plan.topic || ""} — parallel slides, per-slide accounts`);
+
+  let homeSeq = 0;
+  // generate ONE slide: pick a fresh account, up to 4 tries on different
+  // accounts. Each call lands on its own account so a carousel's slides
+  // never share — and run concurrently.
+  async function genSlide(slide) {
+    const out = path.join(OUT_DIR, `${slide.name}.png`);
+    try {
+      if ((await fs.stat(out)).size > 0) {
+        console.log(`${slide.name}: skip (exists)`);
+        return true;
+      }
+    } catch {
+      /* generate */
+    }
+    const tried = new Set();
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      const account = await pickAccount(tried);
+      if (!account) {
+        console.log(`${slide.name}: no usable account left`);
+        return false;
+      }
+      tried.add(account.email);
+      const home = path.join(homeBase, `h${homeSeq++}`);
+      await provisionCodexHome(home, account);
+      const r = await runCodex(slide, plan, total, home);
+      await fs.rm(home, { recursive: true, force: true }).catch(() => {});
+      if (r.ok) {
+        console.log(`${slide.name}: ok`);
+        return true;
+      }
+      if (r.accountDead) await markExhausted(account.email);
+      console.log(`${slide.name}: attempt ${attempt} failed (${account.email})`);
+    }
+    console.log(`${slide.name}: FAILED`);
+    return false;
+  }
 
   let ok = 0;
-  let homeSeq = 0;
   try {
-    for (const slide of plan.slides) {
-      const out = path.join(OUT_DIR, `${slide.name}.png`);
-      try {
-        if ((await fs.stat(out)).size > 0) {
-          console.log(`${slide.name}: skip (exists)`);
-          ok++;
-          continue;
-        }
-      } catch {
-        /* generate */
-      }
-      // EACH slide draws a fresh account from the pool — every codex call is
-      // spread across all ~106 accounts so no single account is hammered to
-      // its rate limit. Up to 4 tries, a different account each time.
-      const triedThisSlide = new Set();
-      let done = false;
-      for (let attempt = 1; attempt <= 4 && !done; attempt++) {
-        const account = await pickAccount(triedThisSlide);
-        if (!account) {
-          console.log(`${slide.name}: no usable account left`);
-          break;
-        }
-        triedThisSlide.add(account.email);
-        const home = path.join(homeBase, `h${homeSeq++}`);
-        await provisionCodexHome(home, account);
-        const r = await runCodex(slide, plan, total, home);
-        await fs.rm(home, { recursive: true, force: true }).catch(() => {});
-        if (r.ok) {
-          done = true;
-          break;
-        }
-        if (r.accountDead) {
-          await markExhausted(account.email);
-          console.log(`${slide.name}: ${account.email} rate-limited -> next account`);
-        } else {
-          console.log(`${slide.name}: attempt ${attempt} failed (${account.email})`);
-        }
-      }
-      console.log(`${slide.name}: ${done ? "ok" : "FAILED"}`);
-      if (done) ok++;
-    }
+    // ALL slides of the carousel render IN PARALLEL — one carousel engages
+    // ~16 accounts at once and finishes in roughly one slide's time, not 16x.
+    const results = await Promise.all(plan.slides.map((s) => genSlide(s)));
+    ok = results.filter(Boolean).length;
   } finally {
     await fs.rm(homeBase, { recursive: true, force: true }).catch(() => {});
   }
