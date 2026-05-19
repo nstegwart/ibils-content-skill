@@ -36,24 +36,29 @@ const SESSIONS_PER_BATCH = 1;
 const TOPUP_AT = 0;           // relaunch a batch when its session finishes
 const MODES = ["news", "education", "marketing", "insight"];
 
-// what a good topic IS, per mode — keeps the burst off trivial niche topics
+// what a good topic IS, per mode. Aim BIG and substantive — topics that
+// genuinely add perspective, never petty one-off chores.
 const TOPIC_BRIEF = {
   news:
     "a fresh Indonesian finance-news angle and its concrete impact on an " +
     "ordinary reader's wallet",
   education:
-    "a substantive personal-finance LESSON — a real money concept (dana " +
-    "darurat, bunga majemuk, inflasi gaya hidup, kebutuhan vs keinginan, " +
-    "sinking fund, aturan 50/30/20, bayar diri sendiri dulu, biaya peluang, " +
-    "utang baik vs buruk) or the core idea of a well-known finance book (Die " +
-    "With Zero, The Psychology of Money, The Richest Man in Babylon, Your " +
-    "Money or Your Life) — never a trivial one-off expense",
+    "a substantive financial-literacy lesson on a concept that genuinely " +
+    "changes how someone sees money — bunga majemuk, inflasi menggerus " +
+    "tabungan, lifestyle inflation, utang baik vs utang buruk, biaya peluang, " +
+    "kenapa nabung saja kalah sama inflasi, financial independence — or the " +
+    "core idea of a respected finance book (The Psychology of Money, Die With " +
+    "Zero, The Richest Man in Babylon). NOT a petty one-off chore",
   marketing:
     "a real Ibils budgeting-app feature framed by the concrete benefit it " +
     "gives the user",
   insight:
-    "a reflective look at a common Indonesian money habit or pattern and why " +
-    "it happens"
+    "a BIG-PICTURE issue that affects millions of Indonesians and genuinely " +
+    "adds wawasan — middle income trap, apakah kelas menengah Indonesia " +
+    "nyata atau sedang tergerus, kenapa kenaikan gaji selalu kalah sama biaya " +
+    "hidup, jebakan kemiskinan antar-generasi, kenapa naik kelas ekonomi " +
+    "makin sulit, beban sandwich generation, biaya hidup vs upah riil. A " +
+    "weighty, research-grounded topic — never a petty daily habit"
 };
 
 let modeCursor = 0;
@@ -92,8 +97,11 @@ function genTopics(mode, n, used, account) {
       `kos, cicilan, belanja bulanan, nabung, dana darurat, pinjol).`,
       `Each topic is ${TOPIC_BRIEF[mode] || TOPIC_BRIEF.education}.`,
       `Each must be RELATABLE — a real person feels "ini soal uangku" — and`,
-      `worth reading, never a petty niche expense. Write a concrete phrase of`,
-      `4-9 words, specific enough to teach ONE clear, useful thing.`,
+      `worth reading. Write a concrete phrase of 4-9 words.`,
+      `AIM BIG: pick issues with real impact and depth that genuinely add`,
+      `wawasan. REJECT petty one-off chores — "menyiapkan dana sertifikat`,
+      `tanah hilang", "uang kondangan", "widget saldo" are exactly the kind`,
+      `of small, low-impact topics to avoid.`,
       `A topic is an ANGLE only — it must NOT contain any specific number,`,
       `price, percentage, rupiah amount, or date. Those are unknown until the`,
       `news is fetched later; a number baked into a topic is fabricated and`,

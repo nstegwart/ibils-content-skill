@@ -78,6 +78,34 @@ list of petty one-off budget items.
 - Every content slide explains the mechanism, then gives a concrete way to
   apply it — a number, a rule, or a model the reader runs on their own money.
 
+### `insight` mode — extra rules
+
+Insight tackles a BIG socioeconomic money issue — never a petty daily habit.
+
+- Pick a weighty topic that genuinely adds perspective: the middle income
+  trap, whether Indonesia's middle class is real or being squeezed, why raises
+  keep losing to the cost of living, intergenerational poverty traps, the
+  sandwich generation, why climbing an economic class keeps getting harder.
+- Explain the REAL, well-established concept accurately in plain Indonesian —
+  name the real framework ("middle income trap" is a World Bank term;
+  "lifestyle inflation"; "upah riil"). Make the reader understand a force
+  bigger than their own wallet, then bring it back to what they CAN control.
+- Still end with something the reader can act on, plus the Ibils tie.
+
+### Research grounding & honesty (education + insight)
+
+- Ground every lesson in REAL, widely-accepted concepts and frameworks. You
+  may name real books and real economic terms.
+- NEVER fabricate a study, a journal citation, a survey, or a specific
+  statistic. Do not write "menurut riset, 68% orang...". If a precise figure
+  is not genuinely well-known, explain the MECHANISM without a fake number.
+- A topic about a cost or a problem is worthless without real detail — if the
+  carousel cannot give a concrete, real cost breakdown, pick a bigger topic
+  (e.g. "menyiapkan dana sertifikat tanah hilang" with no real figures is
+  rejected).
+- Always prefer topics with broad, significant impact over niche one-off
+  chores.
+
 ## 4. Copy — VOICE, HOOK, and ARGUMENT
 
 The copy must read like a sharp Indonesian personal-finance creator talking
