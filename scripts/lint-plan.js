@@ -40,6 +40,14 @@ const BANNED = [
   "rasakan bedanya", "lebih terkontrol"
 ];
 
+// Awkward shorthand — "muda" only modifies a person, never a thing. "gaji
+// muda" is nonsense (salaries don't have an age); write "gaji anak muda" /
+// "gaji pertama" / "gaji UMR".
+const BANNED_AWKWARD = [
+  "gaji muda", "skill muda", "pendapatan muda", "kerja muda", "upah muda",
+  "uang muda", "karier muda"
+];
+
 // Teaser headlines that hide the point instead of stating it.
 const TEASER = [
   "ini rahasia", "rahasianya", "begini cara", "begini langkah", "ini dia",
@@ -105,6 +113,14 @@ function lintSlide(slide, idx) {
   }
   for (const p of BANNED) {
     if (hay.includes(p)) fails.push(`banned vague phrase: "${p}"`);
+  }
+  for (const p of BANNED_AWKWARD) {
+    if (hay.includes(p)) {
+      fails.push(
+        `awkward phrasing "${p}" — "muda" only modifies a person; write ` +
+          `"gaji anak muda" / "gaji pertama" / "gaji UMR" / "pekerja muda"`
+      );
+    }
   }
   for (const p of TEASER) {
     if (headline.toLowerCase().includes(p)) fails.push(`teaser headline: "${p}"`);
