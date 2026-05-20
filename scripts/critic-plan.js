@@ -85,9 +85,14 @@ async function main() {
   clearTimeout(killer);
 
   const lines = buf.split("\n");
-  const fails = lines
-    .map((l) => l.trim())
-    .filter((l) => /^FAIL slide /i.test(l));
+  // require a real digit after "FAIL slide " — drops the prompt's template
+  // placeholder line ("FAIL slide <N> ..."). Then dedup — codex sometimes
+  // echoes its findings twice.
+  const fails = [...new Set(
+    lines
+      .map((l) => l.trim())
+      .filter((l) => /^FAIL slide \d+/i.test(l))
+  )];
   // verdict is the LAST VERDICT line printed
   let verdict = null;
   for (let i = lines.length - 1; i >= 0; i--) {
