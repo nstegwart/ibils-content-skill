@@ -153,7 +153,10 @@ that makes content good. Match this voice exactly.
   interest, frugal living, outstanding) — but explain each in plain Indonesian
   the first time it appears.
 - State claims DIRECT — no hedge words ("disebut", "katanya", "kabarnya",
-  "mungkin"). The rupiah weakened; do not write "rupiah disebut melemah".
+  "kemungkinan", "mungkin", "diperkirakan", "diprediksi", "diramalkan",
+  "diduga", "konon"). The rupiah weakened; do not write "rupiah disebut
+  melemah" or "BI diperkirakan menaikkan". Cite the source name and state
+  the claim straight: "Kumparan: BI bakal naikin suku bunga 50 bps".
 - No forced or cringe wordplay. A clever line is allowed ONLY if it lands
   instantly and a normal reader gets it (BROKEN: "ini namanya kurs nyasar ke
   struk" — forced, unclear). If a line is not instantly clear, write it plain.

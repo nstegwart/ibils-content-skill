@@ -30,7 +30,9 @@ Definisi tolol — kalimat yang:
 - Grammatically aneh — "muda" attach ke benda ("gaji muda", "skill muda",
   "kerja muda", "pendapatan muda"). Gaji ga umur — yang benar: "gaji anak
   muda", "gaji pertama", "gaji UMR", "pekerja muda".
-- Hedge — "disebut", "katanya", "kabarnya", "mungkin", "kemungkinan".
+- Hedge — "disebut", "katanya", "kabarnya", "mungkin", "kemungkinan",
+  "diperkirakan", "diprediksi", "diramalkan", "diduga", "konon". Forecast
+  attribution juga hedge ("BI diperkirakan menaikkan ...") — wajib direct.
 - Forced wordplay / pun yang ga langsung kena.
 - Soft instruction nyamar jadi hook — "Ganti X dengan Y" sebagai HEADLINE
   (instruksi mestinya di BODY).

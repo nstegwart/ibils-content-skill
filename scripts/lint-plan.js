@@ -48,6 +48,14 @@ const BANNED_AWKWARD = [
   "uang muda", "karier muda"
 ];
 
+// Hedge words — soften a claim that should land direct. Forecast-attribution
+// is the usual culprit ("BI diperkirakan menaikkan ..."). Use a direct claim
+// with the source name instead ("Kumparan: BI bakal naikin suku bunga").
+const BANNED_HEDGE = [
+  "diperkirakan", "diprediksi", "diramalkan", "diduga",
+  "disebut", "katanya", "kabarnya", "konon"
+];
+
 // Teaser headlines that hide the point instead of stating it.
 const TEASER = [
   "ini rahasia", "rahasianya", "begini cara", "begini langkah", "ini dia",
@@ -119,6 +127,16 @@ function lintSlide(slide, idx) {
       fails.push(
         `awkward phrasing "${p}" — "muda" only modifies a person; write ` +
           `"gaji anak muda" / "gaji pertama" / "gaji UMR" / "pekerja muda"`
+      );
+    }
+  }
+  for (const p of BANNED_HEDGE) {
+    // bound to word boundary so "disebutkan" still trips "disebut"
+    const re = new RegExp(`\\b${p}\\b`, "i");
+    if (re.test(hay)) {
+      fails.push(
+        `hedge word "${p}" — state the claim direct; cite the source name ` +
+          `("Kumparan: BI bakal naikin suku bunga") instead of softening it`
       );
     }
   }
