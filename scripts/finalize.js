@@ -117,23 +117,23 @@ async function main() {
         // prompt. Repaint the badge strip with the slide's own background
         // colour (sampled from a clean right-edge pixel) so the store badges
         // sit on the background, never on a white box.
-        // AVERAGE a tall clean strip down the right edge (right of the phone
-        // zone) — a single-pixel sample can land on a dark texture fleck and
-        // fill the repaint rectangle with the wrong colour (brown-card bug).
-        const bg = (
+        // TEXTURE-TILE the bottom band — copy a clean strip of the slide's
+        // own paper texture and tile it across the codex-junk zone. A flat
+        // fill (even the right colour) shows as a visible patch on textured
+        // newsprint; tiling real texture blends invisibly.
+        const tag = path.basename(file, ".png");
+        const srcStrip = path.join(DIR, `.bg-src-${tag}.png`);
+        const patchTile = path.join(DIR, `.bg-patch-${tag}.png`);
+        try {
+          await convert([file, "-crop", "80x260+990+270", "+repage", srcStrip]);
+          await convert(["-size", "690x260", "tile:" + srcStrip, patchTile]);
           await convert([
-            file, "-crop", "78x430+1000+520", "+repage",
-            "-scale", "1x1!", "-format", "%[pixel:p{0,0}]", "info:"
-          ])
-        ).stdout.trim();
-        // erase any card / panel / CTA box codex drew in the bottom band —
-        // right of Himel (he sits bottom-left), above the footer line.
-        await convert([
-          file,
-          "-fill", bg || "black",
-          "-draw", "rectangle 390,1040 1080,1296",
-          file
-        ]);
+            file, patchTile, "-geometry", "+390+1040", "-composite", file
+          ]);
+        } finally {
+          await fs.rm(srcStrip, { force: true }).catch(() => {});
+          await fs.rm(patchTile, { force: true }).catch(() => {});
+        }
         await convert([
           file, CLOSING_PHONE,
           "-gravity", "center", "-geometry", "+150+70", "-composite",
