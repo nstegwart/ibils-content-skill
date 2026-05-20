@@ -168,11 +168,13 @@ that makes content good. Match this voice exactly.
   same thing — never "uang dokter" in the headline and "dana darurat" in the
   body.
 - "MUDA" modifies a PERSON, never a thing. NEVER write "gaji muda" (gaji
-  doesn't have an age), "skill muda", "pendapatan muda", "kerja muda". To
-  describe a young person's salary, write "gaji anak muda", "gaji pertama",
-  "gaji pemula", "gaji entry-level", or "gaji UMR". Same logic for every
-  other thing — "pekerja muda" (a young worker), not "kerja muda" (young
-  work, nonsense).
+  doesn't have an age — no Indonesian native says this), "skill muda",
+  "pendapatan muda", "kerja muda". To describe a young person's salary,
+  write "gaji anak muda", "gaji pertama", "gaji pemula", "gaji entry-level",
+  or "gaji UMR". The real Indonesian idiom for a small salary is **"gaji
+  imut"** — use that when you want a colloquial label for a tiny paycheck.
+  Same logic for every other thing — "pekerja muda" (a young worker), not
+  "kerja muda" (young work, nonsense).
 
 ### 4.2 HOOK — every headline HITS A NERVE, never labels
 

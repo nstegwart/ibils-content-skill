@@ -30,8 +30,10 @@ Dua tingkat severity:
 
 == FAIL — GRAVE ONLY (blocking, bikin VERDICT: FAIL) ==
 - "muda" attach ke benda: "gaji muda", "skill muda", "kerja muda",
-  "pendapatan muda" — gaji ga umur. Yang benar: "gaji anak muda", "gaji
-  pertama", "gaji UMR", "pekerja muda".
+  "pendapatan muda" — gaji ga umur, ga ada orang Indo ngomong gini. Yang
+  benar: "gaji anak muda", "gaji pertama", "gaji UMR", "pekerja muda".
+  Idiom Indonesia asli buat gaji kecil = "gaji imut" (pakai ini kalau mau
+  label colloquial buat gaji UMR/pertama yang mini).
 - Hedge: "disebut", "katanya", "kabarnya", "mungkin", "kemungkinan",
   "diperkirakan", "diprediksi", "diramalkan", "diduga", "konon". Forecast
   attribution juga hedge ("BI diperkirakan menaikkan ..."), wajib direct.
