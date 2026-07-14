@@ -19,7 +19,9 @@ screen, a metric, or a UI that is not listed here.
   The previous version of this file listed "email & WhatsApp". That was WRONG and
   it caused false claims to ship in the first carousel batch. WhatsApp ONLY.
 - **Poin & rewards** — earn points for consistent tracking.
-- **Premium** — paid tier unlocking advanced limits.
+- **Premium / Premium Pro** — paid tier. Verified in the real app (iOS captures, 2026-06-14):
+  **My Assets** (net-worth tracking) and **Investment Portfolio** (holdings + live prices) are
+  Premium Pro tools. The app ships **17 tools** in total.
 
 ## Tools
 
@@ -51,3 +53,34 @@ The skill has NO real app screenshots. Therefore:
   - a simple symbolic object (a tidy ledger, a labelled jar, a calendar).
 - At most, Himel may HOLD a phone that shows only the splash — never a phone
   whose screen displays app content.
+
+
+---
+
+## REAL APP SCREENSHOTS — you may now composite them (owner, 2026-07-14)
+
+`assets/app-screens/{en,id}/` — real iOS captures of the shipped app, both locales:
+dashboard · financial-analysis · add-transaction · budget · tools · transactions ·
+bills-debt-goals · invoice-split-bill.
+
+**This changes the visual rule.** We no longer have to avoid the app UI — we have the real thing.
+
+- **Composite a real screenshot. NEVER draw one.** Same doctrine as the logo and the store badges:
+  a real mark is composited, never hallucinated. An image model asked to draw a finance dashboard
+  invents numbers, invents labels, and invents features. It has done all three.
+- If a slide needs an app screen, it takes it from `assets/app-screens/`, or it does not show one.
+
+**HONEST LIMIT — read this before treating them as evidence.** These are **empty-state store
+captures** from a seeded StoreKit run (`local-account-summary.json`: 3 wallets, 6 transactions;
+every balance reads $0, "No Goals Yet", "No split bill history yet"). They **prove a feature
+exists** — which is what the registry needs — but they are **weak as LAW 4 evidence artifacts**,
+because they show nothing happening. A screenshot of an empty screen is not a receipt.
+
+For real evidence artifacts we need **populated** captures. Named as a gap, not faked.
+
+## AGGREGATE DATA — cleared (owner, 2026-07-14)
+
+The owner has cleared the use of **anonymised aggregate app data** ("we looked at N thousand tracked
+coffee transactions…"). This is the one evidence artifact no media account can match. It is gated on
+data volume, and every figure published this way must be program-emitted — never estimated, never
+rounded into a nicer number.

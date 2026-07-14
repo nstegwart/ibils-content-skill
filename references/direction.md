@@ -92,3 +92,84 @@ decoration" for the entire life of this skill, while an 11%-amber cover shipped.
 The light arc taught this lesson once already: **a direction becomes real on the day it becomes a
 number the build asserts.** Everything above is now a number, or it is explicitly marked as a thing a
 human must look at.
+
+
+---
+
+# 4. THE MATERIAL — what Ibils actually has to say
+
+**Decided by the owner, 2026-07-14.** This is the section the whole engine hangs on. The reference
+account has a newsroom; we are a budgeting app. The gates now reject every empty draft — **that is
+the gates working** — but no rule set saves an empty notebook. Receipts cannot be generated. They
+have to be gathered.
+
+Three beats, in build order.
+
+## Beat 1 — MONEY FORENSICS of the reader's own life  *(their "Gimana Modusnya?")*
+
+Mechanism journalism about the things our audience already pays for, every day, without knowing how
+the money actually moves:
+
+- **How paylater/BNPL really makes money off you** — merchant fee (2–4% of the basket), late-fee
+  mechanics (compounding, monthly), and the limit psychology (pay on time → limit rises → a rising
+  limit is designed to be spent). The numbered *modus* slide writes itself.
+- **Why the strikethrough price is theatre** — artifact: our own screenshots of the same SKU across
+  a week.
+- **What a subscription actually costs across a year** — artifact: our computed table.
+- Concert-ticket dynamic pricing. Franchise economics.
+
+Sources: published rates, OJK filings, our own screenshots, our own arithmetic. **Legally clean,
+infinitely repeatable, and nobody else in this niche is doing it for OUR audience.**
+
+## Beat 2 — FINANCIAL TRUE CRIME, global edition  *(their post7)*
+
+Dated, named, sourced stories of scams and collapses this age bracket already half-knows: rug pulls
+with the actual on-chain mechanics, the Jouska scandal, pig-butchering chronology, collapsed fake
+investments. Court records and public reporting only. **English** — this is the global surface.
+
+The Ibils tie is organic **here and only here**: the victim never knew their own numbers, and the
+payoff slide's "so what" is the one check the reader can run tonight.
+
+## Beat 3 — THE NUMBERS NOBODY COMPUTES  *(the thing no competitor can fake)*
+
+A deck built on **one original computation** from public data (BPS, OJK, World Bank — all cited
+on-slide):
+
+- *"What minimum wage bought in 2016 vs 2026 — item by item."*
+- *"Your Rp25k daily coffee, compounded to your 35th birthday — the exact table."*
+- *"Rent vs own in 6 cities — the real monthly delta."*
+
+**LAW 4 applies in full: the chart is rendered by our script from a data file and composited, exactly
+like the logo. The image model NEVER draws a chart — it invents the numbers.**
+
+## Parked, named, not faked — Beat 4
+
+Aggregate anonymised app data ("we looked at N thousand tracked coffee transactions…") is the
+strongest artifact we could ever own, and the owner has **cleared it**. It is gated on data volume.
+Every figure published this way must be **program-emitted** — never estimated, never rounded into a
+nicer number.
+
+## Cadence
+
+**Three story/forensics decks per product deck.** Their observed ratio is stricter (7:1). 3:1 is the
+aggressive edge of honest. A toll booth on every deck teaches the reader that every deck ends in a
+pitch.
+
+---
+
+# 5. DENSITY — decided: dense, but two-speed
+
+**Owner, 2026-07-14.** Slides may be **dense**. Density was never the AI tell — **unscannable
+emptiness** was. But a dense slide is only legal if it reads at **two speeds**:
+
+| speed | what it is | must be true |
+|---|---|---|
+| **3 seconds** | sub-headline + highlighted phrases + the artifact | **forms a complete claim on its own** |
+| **30 seconds** | the full body | the detail, the sourcing, the mechanism |
+
+The highlight layer is **not decoration — it is the skim path**, and it must mark the phrase carrying
+the slide's NEW fact (LAW 1). If the skim path across the whole deck does not reconstruct the story,
+the highlights are furniture.
+
+**We keep the Ibils editorial system** — green/cream/amber, motivated light, real depth. We do **not**
+adopt the reference account's saturated-blue infographic paint. *Steal the engine, not the paint.*
