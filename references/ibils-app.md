@@ -13,8 +13,11 @@ screen, a metric, or a UI that is not listed here.
 - **Buku keuangan** — keep separate books (e.g. pribadi, usaha).
 - **Statistik & rangkuman** — monthly stats and summaries of spending.
 - **Impor & ekspor** — import data from Excel / CSV, export reports.
-- **Catat lewat email & WhatsApp** — forward a receipt email or message and it
-  is logged automatically.
+- **Catat lewat WhatsApp** — forward a receipt message on WhatsApp and it is
+  logged automatically.
+  ⚠️ **EMAIL FORWARDING IS NOT SHIPPED — DO NOT CLAIM IT.** (Owner, 2026-07-14.)
+  The previous version of this file listed "email & WhatsApp". That was WRONG and
+  it caused false claims to ship in the first carousel batch. WhatsApp ONLY.
 - **Poin & rewards** — earn points for consistent tracking.
 - **Premium** — paid tier unlocking advanced limits.
 

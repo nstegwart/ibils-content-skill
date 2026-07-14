@@ -135,11 +135,8 @@ mascot, garbled art) or wrong copy.
 - `scripts/news.js` — zero-dependency live finance-news fetcher (RSS).
 - `scripts/lint-plan.js` — copy-quality gate; FAILs vague / restated / teaser
   copy so it can never reach image generation.
-- `scripts/accounts.js` — codex account pool: discovers accounts, drops dead /
-  rate-limited ones, provisions isolated homes.
 - `scripts/gen-carousel.js` — renders every slide via `codex exec -i` (Himel
-  references attached); runs the linter as a hard gate, rotates accounts on
-  death; reads `plan.json`, writes raw slides.
+  references attached); runs the linter as a hard gate; reads `plan.json`, writes raw slides.
 - `scripts/finalize.js` — normalises slides to 1080x1350 + composites the logo.
 - `scripts/regen.js` — regenerate / fix a carousel; `--slide` for one slide,
   `--no-upload` to stay fully local.

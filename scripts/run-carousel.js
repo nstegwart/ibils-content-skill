@@ -10,21 +10,16 @@
  *
  * Usage:
  *   node run-carousel.js --mode news --topic "rupiah melemah" \
- *        --out <dir> [--account <email>] [--count <4-12>]
+ *        --out <dir> [--count <4-12>]
  *
  * Output: a finished carousel in <dir> (plan.json + slides/), uploaded to
  * gs://<bucket>/<content-id>/. Prints the content-id on success.
  */
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
-import {
-  discoverAccounts, listUsableAccounts, provisionCodexHome,
-  markExhausted, isRateLimited, isAuthDead
-} from "./accounts.js";
 
 const execFileP = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -37,8 +32,6 @@ function arg(flag, def) {
 const MODE = arg("--mode", "news");
 const TOPIC = arg("--topic", "");
 const OUT = path.resolve(arg("--out", `./carousel-${MODE}-${Date.now()}`));
-let ACCOUNT = arg("--account", ""); // resolved/rotated from the pool
-const triedAccounts = new Set();    // accounts already used (or burned) this run
 // --no-upload: run fully LOCALLY — skip the GCS upload and keep the folder.
 const NO_UPLOAD = process.argv.includes("--no-upload");
 // content slides 5-7 (carousel = count + cover + closing = 7-9 slides).
@@ -63,58 +56,34 @@ function nanoid(n = 6) {
   return s;
 }
 
-// pick a usable pool account not already tried this run
-async function pickAccount() {
-  const pool = (await listUsableAccounts())
-    .filter((a) => !triedAccounts.has(a.email));
-  const choice = pool[Math.floor(Math.random() * pool.length)];
-  return choice ? choice.email : null;
-}
-
-// run codex once as the current ACCOUNT; capture output -> { out, dead }.
-// `dead` means the account is rate-limited / auth-dead and should be rotated.
 function codex(promptText) {
   return new Promise((resolve) => {
-    (async () => {
-      const home = path.join(os.tmpdir(), `rc-${nanoid(8)}`);
-      const acc = (await discoverAccounts()).find((a) => a.email === ACCOUNT);
-      if (acc) await provisionCodexHome(home, acc);
-      const args = [
-        "exec", "-m", "gpt-5.5",
-        "-c", 'model_reasoning_effort="medium"',
-        "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check",
-        "-C", OUT, "-"
-      ];
-      const env = { ...process.env, NO_COLOR: "1", CODEX_HOME: home };
-      const child = spawn("codex", args, {
-        cwd: OUT, env, stdio: ["pipe", "pipe", "pipe"]
-      });
-      let buf = "";
-      let killedForLimit = false;
-      const grab = (d) => {
-        buf += d.toString();
-        if (buf.length > 200000) buf = buf.slice(-200000);
-        // kill a rate-limited / auth-dead call immediately instead of letting
-        // it hang to the 6-min timeout — the plan stage then rotates fast.
-        if (!killedForLimit && (isRateLimited(buf) || isAuthDead(buf))) {
-          killedForLimit = true;
-          child.kill("SIGKILL");
-        }
-      };
-      child.stdout.on("data", grab);
-      child.stderr.on("data", grab);
-      const timer = setTimeout(() => child.kill("SIGKILL"), 6 * 60 * 1000);
-      child.on("close", async () => {
-        clearTimeout(timer);
-        await fs.rm(home, { recursive: true, force: true }).catch(() => {});
-        resolve({ out: buf, dead: isRateLimited(buf) || isAuthDead(buf) });
-      });
-      child.stdin.end(promptText);
-    })();
+    const args = [
+      "exec", "-m", "gpt-5.5",
+      "-c", 'model_reasoning_effort="medium"',
+      "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check",
+      "-C", OUT, "-"
+    ];
+    const child = spawn("codex", args, {
+      cwd: OUT, env: { ...process.env, NO_COLOR: "1" }, stdio: ["pipe", "pipe", "pipe"]
+    });
+    let buf = "";
+    const grab = (d) => {
+      buf += d.toString();
+      if (buf.length > 200000) buf = buf.slice(-200000);
+    };
+    child.stdout.on("data", grab);
+    child.stderr.on("data", grab);
+    const timer = setTimeout(() => child.kill("SIGKILL"), 6 * 60 * 1000);
+    child.on("close", async () => {
+      clearTimeout(timer);
+      resolve({ out: buf });
+    });
+    child.stdin.end(promptText);
   });
 }
 
-// ask codex to write the content plan -> { plan, dead }
+// ask codex to write the content plan -> { plan }
 async function writePlan(articles) {
   const planPath = path.join(OUT, "plan.json");
   const prompt = [
@@ -149,16 +118,16 @@ async function writePlan(articles) {
     `Write ONLY the JSON to the file: ${planPath}`,
     "Shape: {mode,topic,kicker,sources:[],slides:[...]}. Reply DONE when written."
   ].filter(Boolean).join("\n");
-  const r = await codex(prompt);
+  await codex(prompt);
   try {
     const plan = JSON.parse(await fs.readFile(planPath, "utf8"));
     if (Array.isArray(plan.slides) && plan.slides.length >= 6) {
-      return { plan, dead: false };
+      return { plan };
     }
   } catch {
     /* invalid */
   }
-  return { plan: null, dead: r.dead };
+  return { plan: null };
 }
 
 async function step(name, file, args) {
@@ -218,33 +187,17 @@ async function fixPlan(report, articles) {
 async function main() {
   await fs.mkdir(path.join(OUT, "slides"), { recursive: true });
 
-  // 0. resolve a usable pool account. The daemon no longer pins one account
-  //    to a 50-session wave, so each session self-picks — spreading load
-  //    across the pool instead of instantly rate-limiting one account.
-  if (ACCOUNT) triedAccounts.add(ACCOUNT);
-  const usableNow = (await listUsableAccounts()).map((a) => a.email);
-  if (!ACCOUNT || !usableNow.includes(ACCOUNT)) ACCOUNT = await pickAccount();
-  if (!ACCOUNT) throw new Error("no usable codex account in the pool");
-
   // 1. source material
   let articles = "";
   if (MODE === "news") {
     articles = await step("news", "news.js", ["--topic", TOPIC, "--limit", "8"]);
   }
 
-  // 2. plan — codex accounts rate-limit, so rotate accounts until one writes a
-  //    valid plan (a burned account is marked exhausted so the pool drains).
+  // 2. plan
   let plan = null;
-  for (let tryNo = 1; tryNo <= 4 && !plan; tryNo++) {
-    triedAccounts.add(ACCOUNT);
+  for (let tryNo = 1; tryNo <= 3 && !plan; tryNo++) {
     const r = await writePlan(articles);
     plan = r.plan;
-    if (!plan && tryNo < 4) {
-      if (r.dead) await markExhausted(ACCOUNT).catch(() => {});
-      const next = await pickAccount();
-      if (!next) break;
-      ACCOUNT = next;
-    }
   }
   if (!plan) throw new Error("plan write failed");
 
@@ -284,9 +237,9 @@ async function main() {
   if (!gateOk) throw new Error("plan failed the copy quality gates (lint + critic)");
 
   // 3. generate + finalise
-  const genArgs = [path.join(OUT, "plan.json"), path.join(OUT, "slides")];
-  if (ACCOUNT) genArgs.push("--account", ACCOUNT);
-  await step("gen", "gen-carousel.js", genArgs);
+  await step("gen", "gen-carousel.js", [
+    path.join(OUT, "plan.json"), path.join(OUT, "slides")
+  ]);
   await step("finalize", "finalize.js", [path.join(OUT, "slides")]);
 
   // 4. upload — skipped with --no-upload (local run: carousel stays in OUT)

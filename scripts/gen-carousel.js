@@ -2,27 +2,17 @@
 /**
  * Generate every raw slide of ONE Ibils carousel from a content plan.
  *
- * One carousel rides ONE codex account (an isolated provisioned CODEX_HOME).
- * Each slide is rendered via `codex exec` with the Himel pose references
- * ATTACHED (`-i`) — the proven way to lock the mascot identity.
- *
- * ACCOUNT RESILIENCE: a slide's codex output is scanned for auth-dead /
- * rate-limit markers. When the account dies, it is marked exhausted and the
- * carousel rotates to the next usable account and retries the slide — so a
- * dead account never sinks the run.
+ * 1 codex session = 1 image, ALL PARALLEL. Each slide is rendered via
+ * `codex exec` with the Himel pose references ATTACHED (`-i`) — the proven
+ * way to lock the mascot identity.
  *
  * Usage:
- *   node gen-carousel.js <plan.json> <out-slides-dir> [--account <email>]
+ *   node gen-carousel.js <plan.json> <out-slides-dir>
  */
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import {
-  listUsableAccounts, provisionCodexHome, markExhausted,
-  isAuthDead, isRateLimited
-} from "./accounts.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS = path.join(HERE, "..", "assets");
@@ -33,14 +23,10 @@ const LOGO_REF = path.join(ASSETS, "ibils-icon.svg");
 
 const PLAN_PATH = process.argv[2];
 if (!PLAN_PATH || !process.argv[3]) {
-  console.error("usage: node gen-carousel.js <plan.json> <out-dir> [--account <email>]");
+  console.error("usage: node gen-carousel.js <plan.json> <out-dir>");
   process.exit(1);
 }
 const OUT_DIR = path.resolve(process.argv[3]);
-const WANT_ACCOUNT = (() => {
-  const i = process.argv.indexOf("--account");
-  return i !== -1 ? process.argv[i + 1] : null;
-})();
 
 // ---- fixed prompt blocks (operative copy — see references/styles.md) ------
 
@@ -220,9 +206,7 @@ function buildPrompt(slide, plan, total) {
   return lines.join("\n");
 }
 
-// Run one slide on one provisioned CODEX_HOME. Captures output so the caller
-// can tell a genuine failure from an account-death.
-function runCodex(slide, plan, total, home) {
+function runCodex(slide, plan, total) {
   return new Promise((resolve) => {
     const out = path.join(OUT_DIR, `${slide.name}.png`);
     const imgs = [...HIMEL_REFS];
@@ -237,24 +221,9 @@ function runCodex(slide, plan, total, home) {
     ];
     const child = spawn("codex", args, {
       cwd: OUT_DIR,
-      env: { ...process.env, NO_COLOR: "1", CODEX_HOME: home },
+      env: { ...process.env, NO_COLOR: "1" },
       stdio: ["pipe", "pipe", "pipe"]
     });
-    let buf = "";
-    let killedForLimit = false;
-    const grab = (d) => {
-      buf += d.toString();
-      if (buf.length > 200000) buf = buf.slice(-200000);
-      // a rate-limited / auth-dead codex call otherwise hangs until the
-      // 9-min SIGKILL — kill it the moment the limit message appears so the
-      // carousel rotates to the next account in seconds, not minutes.
-      if (!killedForLimit && (isRateLimited(buf) || isAuthDead(buf))) {
-        killedForLimit = true;
-        child.kill("SIGKILL");
-      }
-    };
-    child.stdout.on("data", grab);
-    child.stderr.on("data", grab);
     const timer = setTimeout(() => child.kill("SIGKILL"), 9 * 60 * 1000);
     child.on("close", async () => {
       clearTimeout(timer);
@@ -264,19 +233,7 @@ function runCodex(slide, plan, total, home) {
       } catch {
         /* genuine failure */
       }
-      // keep this codex home tiny — wipe everything codex wrote this slide,
-      // keep only auth.json so the next slide reuses the same account. Without
-      // this a 16-slide carousel home grows to multiple GB in /tmp.
-      try {
-        for (const e of await fs.readdir(home)) {
-          if (e !== "auth.json") {
-            await fs.rm(path.join(home, e), { recursive: true, force: true });
-          }
-        }
-      } catch {
-        /* home already gone */
-      }
-      resolve({ ok, accountDead: isAuthDead(buf) || isRateLimited(buf) });
+      resolve({ ok });
     });
     child.stdin.end(buildPrompt(slide, plan, total));
   });
@@ -290,12 +247,6 @@ function lintGate() {
     });
     child.on("close", (code) => resolve(code === 0));
   });
-}
-
-// pick a random usable account not already tried for the current slide
-async function pickAccount(exclude) {
-  const pool = (await listUsableAccounts()).filter((a) => !exclude.has(a.email));
-  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
 }
 
 async function main() {
@@ -316,17 +267,8 @@ async function main() {
     s.name = `${String(i + 1).padStart(2, "0")}-${s.kind}`;
   });
 
-  if (!(await listUsableAccounts()).length) {
-    console.error("no usable codex account");
-    process.exit(1);
-  }
-  const homeBase = await fs.mkdtemp(path.join(os.tmpdir(), "ibils-carousel-"));
-  console.log(`carousel ${plan.mode}/${plan.topic || ""} — parallel slides, per-slide accounts`);
+  console.log(`carousel ${plan.mode}/${plan.topic || ""} — parallel slides`);
 
-  let homeSeq = 0;
-  // generate ONE slide: pick a fresh account, up to 4 tries on different
-  // accounts. Each call lands on its own account so a carousel's slides
-  // never share — and run concurrently.
   async function genSlide(slide) {
     const out = path.join(OUT_DIR, `${slide.name}.png`);
     try {
@@ -337,38 +279,20 @@ async function main() {
     } catch {
       /* generate */
     }
-    const tried = new Set();
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      const account = await pickAccount(tried);
-      if (!account) {
-        console.log(`${slide.name}: no usable account left`);
-        return false;
-      }
-      tried.add(account.email);
-      const home = path.join(homeBase, `h${homeSeq++}`);
-      await provisionCodexHome(home, account);
-      const r = await runCodex(slide, plan, total, home);
-      await fs.rm(home, { recursive: true, force: true }).catch(() => {});
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const r = await runCodex(slide, plan, total);
       if (r.ok) {
         console.log(`${slide.name}: ok`);
         return true;
       }
-      if (r.accountDead) await markExhausted(account.email);
-      console.log(`${slide.name}: attempt ${attempt} failed (${account.email})`);
+      console.log(`${slide.name}: attempt ${attempt} failed`);
     }
     console.log(`${slide.name}: FAILED`);
     return false;
   }
 
-  let ok = 0;
-  try {
-    // ALL slides of the carousel render IN PARALLEL — one carousel engages
-    // ~16 accounts at once and finishes in roughly one slide's time, not 16x.
-    const results = await Promise.all(plan.slides.map((s) => genSlide(s)));
-    ok = results.filter(Boolean).length;
-  } finally {
-    await fs.rm(homeBase, { recursive: true, force: true }).catch(() => {});
-  }
+  const results = await Promise.all(plan.slides.map((s) => genSlide(s)));
+  const ok = results.filter(Boolean).length;
   console.log(`generated ${ok}/${total} raw slides -> ${OUT_DIR}`);
   if (ok < total) process.exit(1);
 }

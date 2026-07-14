@@ -1,3 +1,20 @@
+# Ibils Content Skills
+
+Repo ini isinya **dua skill** yang berbagi satu set aset dan satu registry fitur:
+
+| skill | isi | bahasa output |
+|---|---|---|
+| **`ibils-carousel`** (`SKILL.md`) | carousel Instagram, tiap slide dibakar penuh sama codex | English |
+| **`ibils-video-ad`** (`video-ad/SKILL.md`) | iklan video sinematik vertikal — codex bikin frame, grok animasiin, ffmpeg rakit | **Bahasa Indonesia** (iklan berbayar) |
+
+Keduanya pakai `assets/` (pose Himel, logo, phone) dan `references/ibils-app.md` yang sama.
+
+> **`references/ibils-app.md` = SATU-SATUNYA sumber kebenaran soal fitur yang beneran shipped.**
+> File ini pernah bohong — dia daftarin *email forwarding*, yang **ga pernah dirilis**, dan konten
+> yang ngeklaim itu sempat kegenerate. Kalau sebuah klaim itu penting, **tanya owner.**
+
+---
+
 # Ibils Carousel — Pakai Skill di Codex (Lokal)
 
 Skill `ibils-carousel` bikin **carousel Instagram IBILS** — tiap slide digambar
@@ -11,11 +28,10 @@ carousel. Semua lokal, tanpa Google Cloud.
 
 - Skill ada di `~/.codex/skills/ibils-carousel/`
   (Windows: `%USERPROFILE%\.codex\skills\ibils-carousel\`).
-- `codex login` udah jalan, dan ada minimal 1 akun di `~/.codex/accounts/`:
-  ```bash
-  mkdir -p ~/.codex/accounts && cp ~/.codex/auth.json ~/.codex/accounts/local.json
-  ```
+- `codex login` udah jalan. **Satu akun aja cukup** — tiap gambar dapet sesi
+  `codex exec` sendiri dan semuanya jalan paralel. Ga ada pool akun, ga ada rotasi.
 - `node` v18+ dan **ImageMagick** terpasang (`magick -version`).
+- Buat skill video: **ffmpeg**, **python3** (numpy + scipy), dan akses `grok`.
 
 ---
 

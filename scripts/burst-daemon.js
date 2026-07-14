@@ -2,10 +2,9 @@
 /**
  * Infinite carousel burst daemon.
  *
- * Keeps 4 BATCHES running. One batch = 50 carousel sessions launched within a
- * second, tagged to one codex account. One session = one run-carousel.js =
- * one full carousel uploaded to GCS. When a batch finishes — or drops to <=20
- * live sessions — a fresh batch is launched on the next account. Runs forever.
+ * Keeps 4 BATCHES running. One batch = carousel sessions launched near-
+ * atomically. One session = one run-carousel.js = one full carousel uploaded
+ * to GCS. When a batch finishes a fresh batch is launched. Runs forever.
  *
  * No redundant content: every carousel's topic is recorded in a ledger and new
  * topics are generated to avoid anything already used.
@@ -18,19 +17,12 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { listUsableAccounts, provisionCodexHome } from "./accounts.js";
-
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WORKDIR = path.resolve(process.argv[2] || path.join(os.homedir(), "ibils-burst"));
 const LEDGER = path.join(WORKDIR, "topics-ledger.jsonl");
 const STOP = path.join(WORKDIR, "STOP");
 
-// gen-carousel.js renders a carousel's ~16 slides IN PARALLEL across accounts.
-// SUSTAINABLE PACING: a carousel costs ~17 codex calls; the ~104-account pool
-// refills ~620 image-calls/hr => a ceiling of ~37 carousels/hr. 4x1=4
-// concurrent carousels demand ~510 calls/hr — below the refill rate — so the
-// pool never fully drains and the burst produces a steady ~25-30 carousels/hr
-// nonstop, instead of sawtoothing between a 1h spike and hours of stall.
+// gen-carousel.js renders a carousel's ~16 slides IN PARALLEL.
 const BATCHES = 4;
 const SESSIONS_PER_BATCH = 1;
 const TOPUP_AT = 0;           // relaunch a batch when its session finishes
@@ -63,7 +55,6 @@ const TOPIC_BRIEF = {
 };
 
 let modeCursor = 0;
-let acctCursor = 0;
 let waveNo = 0;
 
 function log(msg) {
@@ -87,10 +78,8 @@ async function appendLedger(mode, topics) {
 }
 
 // one codex call → N fresh, unique topics for a mode (deduped vs the ledger)
-function genTopics(mode, n, used, account) {
-  return new Promise(async (resolve) => {
-    const home = path.join(WORKDIR, `.topgen-${Date.now()}`);
-    await provisionCodexHome(home, account).catch(() => {});
+function genTopics(mode, n, used) {
+  return new Promise((resolve) => {
     const recent = used.slice(-300).join("\n");
     const prompt = [
       `Generate ${n} content topics for an IBILS "${mode}" Instagram carousel.`,
@@ -134,13 +123,12 @@ function genTopics(mode, n, used, account) {
       "exec", "-m", "gpt-5.5", "-c", 'model_reasoning_effort="medium"',
       "--dangerously-bypass-approvals-and-sandbox",
       "--skip-git-repo-check", "-"
-    ], { env: { ...process.env, NO_COLOR: "1", CODEX_HOME: home }, stdio: ["pipe", "pipe", "ignore"] });
+    ], { env: { ...process.env, NO_COLOR: "1" }, stdio: ["pipe", "pipe", "ignore"] });
     let buf = "";
     child.stdout.on("data", (d) => (buf += d.toString()));
     const timer = setTimeout(() => child.kill("SIGKILL"), 4 * 60 * 1000);
     child.on("close", async () => {
       clearTimeout(timer);
-      await fs.rm(home, { recursive: true, force: true }).catch(() => {});
       const usedSet = new Set(used.map((t) => t.toLowerCase()));
       const topics = buf.split("\n")
         .map((l) => l.replace(/^[-*\d.)\s]+/, "").trim())
@@ -171,9 +159,6 @@ function sweepStale() {
 }
 
 async function launchSession(mode, topic, idx) {
-  // No --account: each run-carousel self-picks a usable account from the pool.
-  // Pinning 50 sessions to one account instantly rate-limits it; spreading
-  // them across the ~100-account pool keeps sessions productive.
   const out = path.join(WORKDIR, "out", `w${waveNo}-${mode}-${idx}-${Date.now()}`);
   const logFile = path.join(WORKDIR, "logs", `w${waveNo}-${mode}-${idx}.log`);
   const fh = await fs.open(logFile, "a");
@@ -185,12 +170,11 @@ async function launchSession(mode, topic, idx) {
   return child;
 }
 
-async function launchBatch(slot, accounts) {
+async function launchBatch(slot) {
   waveNo++;
   const mode = MODES[modeCursor++ % MODES.length];
-  const account = accounts[acctCursor++ % accounts.length];
   const used = await readLedgerTopics();
-  const topics = await genTopics(mode, SESSIONS_PER_BATCH, used, account);
+  const topics = await genTopics(mode, SESSIONS_PER_BATCH, used);
   if (!topics.length) {
     log(`batch slot ${slot}: topic generation empty — retry next tick`);
     return null;
@@ -202,8 +186,8 @@ async function launchBatch(slot, accounts) {
   );
   let alive = jobs.length;
   jobs.forEach((c) => c.on("close", () => { alive--; }));
-  log(`batch slot ${slot} WAVE ${waveNo}: ${jobs.length} sessions [${mode}] on ${account.email}`);
-  return { slot, mode, account: account.email, jobs, get alive() { return alive; } };
+  log(`batch slot ${slot} WAVE ${waveNo}: ${jobs.length} sessions [${mode}]`);
+  return { slot, mode, jobs, get alive() { return alive; } };
 }
 
 async function main() {
@@ -218,16 +202,10 @@ async function main() {
       break;
     }
     await sweepStale();
-    const accounts = await listUsableAccounts();
-    if (!accounts.length) {
-      log("no usable account — waiting 60s");
-      await new Promise((r) => setTimeout(r, 60000));
-      continue;
-    }
     for (let i = 0; i < BATCHES; i++) {
       if (!batches[i] || batches[i].alive <= TOPUP_AT) {
         if (batches[i]) log(`batch slot ${i}: ${batches[i].alive} left — topping up`);
-        batches[i] = (await launchBatch(i, accounts)) || batches[i];
+        batches[i] = (await launchBatch(i)) || batches[i];
       }
     }
     await new Promise((r) => setTimeout(r, 20000)); // re-check every 20s
