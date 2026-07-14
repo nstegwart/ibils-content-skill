@@ -1,144 +1,82 @@
-# Content Rules — Ibils Carousel (non-negotiable)
+# CONTENT RULES
 
-These rules govern the WORDS on every slide. They are absolute. A carousel that
-breaks any rule below is rejected.
+> ## READ THIS FIRST — the banlist is NOT the doctrine
+>
+> Most of what follows used to be a list of forbidden words. The owner's verdict was that a banlist
+> is **stale and does not solve the root cause**, and he is right. A banlist can only reject a phrase
+> somebody already thought of, it never says what a GOOD slide is, and **you cannot ban your way to
+> interesting.**
+>
+> **The root cause of copy that "reads AI" is not word choice. It is that there is no information in
+> the sentence** — and a model handed an information vacuum fills it with SHAPE: rhythm, balance, a
+> triplet, a payoff. Ban the triplet and the vacuum simply grows a different shape.
+>
+> The reference account (`reference-standard.md`) writes in plain, unremarkable prose, and not one
+> sentence reads as AI — because every sentence is a **falsifiable proposition**. *"74 kg emas
+> batangan disita, senilai Rp67,2 miliar"* cannot be faked. **The research IS the writing.**
+>
+> So the banlist is **demoted**: it stays as a cheap smoke detector, and every one of its messages now
+> ends by telling you what the phrase actually means — *you have nothing to say yet; go find the fact.*
+> The doctrine is the six laws below.
 
-The carousel ships in ENGLISH — the account is global. Every headline, body,
-kicker and CTA is written in English.
+---
 
-## 1. No hallucination
+## THE SIX LAWS
 
-- Every number, percentage, currency amount, statistic, date, or named fact
-  MUST come from a fetched news item or from material the user explicitly
-  supplied.
-- If the copy has no sourced number, the slide carries no number. Never invent
-  one to "look complete".
-- NUMBER CONSISTENCY — every figure across the whole carousel (cover,
-  headlines, bodies) must be the SAME real figure from the source. Never put a
-  rounded or approximate number in the hook that a later slide then
-  contradicts (BROKEN: cover "DOLLAR HITS RP17,500" but body "Rp17,726"). Use
-  the exact sourced figure everywhere; if it is awkward in the hook, the hook
-  carries NO number.
-- The `topic` is only an angle — if it contains a number, IGNORE that number
-  and use the real figure from the fetched news instead.
-- Never invent a source, a publisher, a survey, or a quote.
-- Spell every institution, agency, brand, and person name FULLY and correctly —
-  "the Ministry of Finance (Kemenkeu)" (never a clipped "Kemenke"), "Bank
-  Indonesia" or "BI", "OJK" (the financial regulator), the publisher exactly as
-  the source writes it. Name a source in the form the source itself uses; if you
-  add an English gloss, use the SAME gloss for the rest of the deck. A truncated
-  or misspelled name reads as careless and AI-generated.
-- If a referenced source (RSS feed, link) cannot be fetched: STOP. Report it.
-  Offer manual mode. Do not generate from guesses.
+**LAW 1 — THE RECEIPT LAW.** *Every slide carries at least one new, checkable, specific fact* — an
+exact figure, a named thing, a date, an attributed quote, or a concrete mechanism step — **that no
+earlier slide already carried.** If you cannot point at this slide's new fact, the slide does not
+exist yet. Go find the fact.
+`[ASSERT]` `lint-plan.js` extracts fact-tokens and fails any content slide whose token set adds
+nothing. Deck-level: ≥50% of content slides must carry a figure. *(A machine can verify a number
+EXISTS. It cannot verify it is TRUE — provenance stays human, plus `sources[]`, plus the critic.)*
 
-## 2. Cite sources
+**LAW 2 — THE GAP LAW.** A swipe is earned only by a **specific open gap**: a list in progress, a
+chronology mid-stream, a teaser naming the next slide's payload, an unresolved conflict. The cover
+opens the biggest gap by **showing concrete anchors and withholding exactly one thing.**
+`[LINT]` A question or a listicle cover is **legal** — the reference account's covers are all
+questions — *but only if the cover already put a number or a name on the table.* Deferral without an
+anchor is a promise with no collateral. Mid-deck, deferral stays banned outright: **the middle is for
+paying, not promising.**
 
-- Every `news`-mode carousel built from live news MUST list its real sources
-  (title + link + publisher) in the plan's `sources` array.
-- The cover/closing may stay source-free, but any factual claim on a content
-  slide must trace to a listed source.
+**LAW 3 — THE SURPRISE LAW.** The key fact of each slide must **beat the prior of a smart reader who
+has read the deck so far.** If that reader could write slide N+1 from slide N, slide N+1 is padding.
+`[ASSERT]` The prediction probe (`runtime/predict-probe.mjs`, built for comedy) generalises here —
+feed slides 1..N to fresh models and ask them to guess the next key fact. This is the one gate that
+cannot be replaced by re-reading, because **you already know your own ending.**
 
-## 3. Categories (`mode`)
+**LAW 4 — THE EVIDENCE LAW.** Claims are carried by **artifacts** — a chart computed from real data, a
+real screenshot, a public document, an attributed quote card, a before/after pair — and the text
+*captions the artifact*. An artifact that could not exist unless the thing were real is worth ten
+sentences of assertion. **Charts are rendered by our script from a data file and composited**, exactly
+like the logo. The image model never draws a chart; it hallucinates numbers.
 
-Four modes. Each has a fixed identity and its own visual style (see styles.md).
+**LAW 5 — THE TWO-SPEED LAW.** A slide may be **as dense as it likes** — density was never the AI
+tell; *unscannable emptiness* was. But it must read at two speeds: a **3-second path** (sub-headline +
+highlighted phrases + artifact) that forms a complete claim on its own, and a full-read path.
+**Scannability, not brevity, is the law.**
 
-| mode | purpose | tone |
-|------|---------|------|
-| `news` | latest finance news → impact on the reader's wallet | urgent, credible |
-| `education` | budgeting / money concepts | calm, teaching |
-| `marketing` | the Ibils app's real features & user benefits | confident, product-forward |
-| `insight` | analysis of money habits & patterns | reflective, calm |
+**LAW 6 — THE SPINE LAW.** A deck is a **chain** — chronology, case file, mechanism, biography, or
+argument — never a pile. `[HUMAN]` **The swap probe:** exchange any two adjacent content slides. If
+nothing breaks, there is no spine. Cut one.
 
-Each mode has a FIXED kicker / section label — use it verbatim in the plan's
-`kicker` field, written exactly in this mixed case (not all-caps):
+---
 
-| mode | kicker |
-|------|--------|
-| `news` | `Ibils News` |
-| `education` | `Ibils Education` |
-| `marketing` | `Ibils App` |
-| `insight` | `Ibils Insight` |
+## WHAT WE DELETED, AND WHY
 
-### Who reads this — the audience (applies to EVERY mode)
+| deleted | why |
+|---|---|
+| *"KEEP IT TIGHT — 7-9 slides; a long deck is the #1 AI tell"* + the 5-8 code clamp | **Inverted.** The reference runs 6-14 and pads nothing. A deck is not bad for being long — it is long for being **empty**. Law 1 makes padding impossible, so a length cap is unnecessary. |
+| Blanket FAIL on question / listicle covers | **Half wrong.** Their covers are all questions; two of their best decks are listicles. They work because they **show receipts before deferring.** Replaced by the cover-anchor lint. |
+| *"Body = 1-3 short sentences"* | Replaced by Law 5. Sparsity was never the fix. |
+| Mandatory Ibils tie on every deck | A toll booth on every deck trains the reader that every deck ends in a pitch. Product belongs in a **minority** of decks. |
+| The banlist as the *definition* of quality | Demoted to a smoke detector. Kept, because it is cheap and catches the loudest garbage — but it is one tripwire of six, not the doctrine. |
 
-IBILS readers are YOUNG: Gen-Z & millennial, ~17-32 — fresh grad, first-jobber,
-student, freelancer / gig worker, on minimum wage or a first paycheck. They RENT
-or live with their parents; they do NOT own a house. Their money goes to: eating
-out and going out, coffee, ride-hailing, app subscriptions (Spotify/Netflix),
-paylater (BNPL) and online loans, phone/gadget instalments, running out of money
-before payday, FOMO / doom spending, a side hustle, an emergency fund, a bit of
-capital for a small business.
+---
 
-Every carousel — whatever the topic — must land in THAT life. When the source
-news is a price or a policy, bend the angle to a young renter's wallet, never a
-homeowner's or a parent's.
-- WRONG: "sugar prices are up → the family kitchen budget".
-  RIGHT: "prices are up → your coffee, your takeout, your subscriptions".
-- A topic that only matters to homeowners (mortgages, buying a house),
-  pensioners, the sick/elderly (medical bills, hospitals), parents with
-  school-age kids, or one city's commuters is OFF-TARGET — re-angle it to the
-  young audience or drop it.
+## APPENDIX — the known low-information strings (the smoke detector)
 
-### `marketing` mode — extra rules
-
-- Copy may ONLY describe real Ibils features. Read `references/ibils-app.md` and
-  use that list — never invent a feature, screen, metric, or capability.
-- EMAIL FORWARDING IS NOT SHIPPED. The app logs a receipt forwarded on
-  WhatsApp — WhatsApp messages ONLY. Never write, imply, or illustrate email
-  forwarding, an inbox, or "forward your bank email".
-- Focus on the feature AND the benefit it gives the user.
-- VISUAL: there are no app screenshots. NEVER show a phone with a fabricated
-  app screen (fake dashboard / charts / buttons). A phone may appear only
-  showing the Ibils splash (green + iB logo + "Ibils"), exactly like the
-  closing. Prefer illustrating the user's benefit or Himel doing the real
-  action over drawing a phone at all. (See `ibils-app.md` "Visual rule".)
-
-### `education` mode — extra rules
-
-Education must genuinely TEACH a money concept with real reasoning — never a
-list of petty one-off budget items.
-
-- Each education carousel teaches ONE substantive concept and the WHY behind
-  it: the emergency fund (how many months of expenses, and why that many),
-  compound interest, lifestyle creep, needs vs wants, a sinking fund, the
-  50/30/20 rule, "pay yourself first", opportunity cost, good debt vs bad debt.
-- Anchor the lesson in the IDEA of a well-known personal-finance book, named
-  plainly: *"'Die With Zero' (Bill Perkins): ..."*, *"'The Psychology of Money'
-  (Morgan Housel): ..."*, *"'The Richest Man in Babylon': pay yourself first —
-  10% off the top."*, *"'Your Money or Your Life': price things in hours of your
-  life, not money."* Use the book's REAL, widely-known thesis in plain English —
-  never invent a quote, page number, or statistic.
-- Every content slide explains the mechanism, then gives a concrete way to
-  apply it — a number, a rule, or a model the reader runs on their own money.
-
-### `insight` mode — extra rules
-
-Insight tackles a BIG socioeconomic money issue — never a petty daily habit.
-
-- Pick a weighty topic that genuinely adds perspective: the middle income
-  trap, whether the middle class is real or being squeezed, why raises keep
-  losing to the cost of living, intergenerational poverty traps, the sandwich
-  generation, why climbing an economic class keeps getting harder.
-- Explain the REAL, well-established concept accurately in plain English — name
-  the real framework ("middle income trap" is a World Bank term; "lifestyle
-  inflation"; "real wages"). Make the reader understand a force bigger than
-  their own wallet, then bring it back to what they CAN control.
-- Still end with something the reader can act on, plus the Ibils tie.
-
-### Research grounding & honesty (education + insight)
-
-- Ground every lesson in REAL, widely-accepted concepts and frameworks. You
-  may name real books and real economic terms.
-- NEVER fabricate a study, a journal citation, a survey, or a specific
-  statistic. Do not write "research shows 68% of people...". If a precise
-  figure is not genuinely well-known, explain the MECHANISM without a fake
-  number.
-- A topic about a cost or a problem is worthless without real detail — if the
-  carousel cannot give a concrete, real cost breakdown, pick a bigger topic
-  (e.g. "saving up to replace a lost land certificate" with no real figures is
-  rejected).
-- Always prefer topics with broad, significant impact over niche one-off
-  chores.
+These are not the doctrine. They are the phrases writers reach for when Law 1 is unmet.
 
 ## 4. Copy — VOICE, HOOK, and ARGUMENT
 
@@ -318,10 +256,21 @@ friend?"* If not, the angle is too thin — pick a better one.
 ## 5. Carousel structure
 
 A carousel is exactly: 1 cover + N content slides + 1 closing slide.
-- KEEP IT TIGHT — 7-9 slides total (N = 5-7 content). Real human carousels are
-  short. Every slide must earn its place and move the argument FORWARD; if two
-  slides make the same point, cut one. A long deck that circles one narrow
-  point is the #1 "AI-generated" tell — never pad to fill slides.
+- **LENGTH FOLLOWS THE STORY. There is no slide budget.**
+  This rule used to say "KEEP IT TIGHT — 7-9 slides… a long deck is the #1 AI-generated
+  tell." That was **inverted**, and it was doing real damage. @ngomonginuang — the largest
+  account in this exact niche — runs **12-20 slides, median 17**, every single time. See
+  `reference-standard.md` for the measurement.
+
+  The rule confused a symptom for the cause. **An AI deck is not bad because it is long.
+  It is long because it is EMPTY** — the model pads because it has nothing to say. Length
+  is downstream of that. A 20-slide deck carrying 20 facts is excellent; an 8-slide deck
+  carrying none is just shorter slop.
+
+  So: **every slide must earn its place by carrying NEW INFORMATION** — a fact, a figure, a
+  named thing, a mechanism, a turn. If two slides make the same point, cut one. If you have
+  seventeen things worth saying, use seventeen slides. If you have four, you do not have a
+  carousel yet — go find something to say.
 - Cover: the sharpest hook (§4.2) — one line, no body paragraph.
 - Content slides: each is one beat of the single argument (§4.3), flowing into
   the next. Vary the layout (statement, list, one-big-number, numbered step)

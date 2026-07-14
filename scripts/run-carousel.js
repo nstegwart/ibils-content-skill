@@ -35,7 +35,11 @@ const OUT = path.resolve(arg("--out", `./carousel-${MODE}-${Date.now()}`));
 // content slides 5-7 (carousel = count + cover + closing = 7-9 slides).
 // Real human carousels run 6-9 slides total; a 14-slide deck on one narrow
 // topic turns repetitive and reads as AI padding.
-const COUNT = Math.max(5, Math.min(8, Number(arg("--count", "")) ||
+// LENGTH FOLLOWS THE STORY. The old clamp was 5-8, which made an inverted rule
+// unoverridable in code: the reference account in this niche runs 6-14 slides (median 11),
+// and pads nothing. A deck is not bad for being long — it is long for being empty. The gate
+// on quality is the INFORMATION requirement in lint-plan.js, not a slide budget.
+const COUNT = Math.max(6, Math.min(15, Number(arg("--count", "")) ||
   (5 + Math.floor(Math.random() * 3))));
 
 const KICKERS = {

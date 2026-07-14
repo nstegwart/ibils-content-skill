@@ -15,8 +15,14 @@ excluded, at his instruction) and measured them against our own shipped batch.
 
 | | @ngomonginuang | Ibils skill |
 |---|---|---|
-| slides per carousel | **12 – 20** (median **17**) | **hard clamp 5–8** (`run-carousel.js`) |
+| slides per carousel | **6 – 14** (median **11**, mean 10.4) | **hard clamp 5–8** (`run-carousel.js`) |
 | what our own rules say | — | *"KEEP IT TIGHT — 7-9 slides total… padding is the **#1 'AI-generated' tell**"* |
+
+> **Correction, on the record.** My first pass claimed "12–20 slides, median 17". That was **wrong**.
+> My scraper's "Next" click did not always advance, so the same 6 promo images were injected into
+> every post — 48 contaminated files, MD5-verified. The real numbers are above. The conclusion
+> survives (our 5–8 clamp is too tight and length must follow the story), but I overstated the
+> magnitude, and a corrupted measurement is worth less than no measurement.
 
 The most successful account in this exact niche does the opposite of our rule, **every single time**.
 

@@ -281,6 +281,46 @@ await test("no generator hardcodes an IG handle (it is surface-derived)", async 
   if (!/LANG === "id" \? "" :/.test(src)) throw new Error("gen-carousel.js does not drop the handle for Indonesian content");
 });
 
+await test("RECEIPT LAW kills a deck with nothing in it", async () => {
+  const f = await writeJson("empty.json", { topic:"t", mode:"insight", kicker:"Ibils", sources:[], slides:[
+    { kind:"cover",   brief:'HEADLINE: "Why you overspend — and how to stop"' },
+    { kind:"content", brief:'HEADLINE: "Your brain forgets"  BODY: "You forget what you spent, so you spend again."' },
+    { kind:"content", brief:'HEADLINE: "The fix is awareness"  BODY: "See the pattern and it loses its grip."' },
+    { kind:"closing", brief:'HEADLINE: "Start today"' }]});
+  const out = node([path.join(ROOT, "scripts/lint-plan.js"), f]).stdout;
+  if (!/NO NEW RECEIPT/.test(out)) throw new Error("a deck carrying zero facts passed the gate");
+  if (!/defers with no anchor/.test(out)) throw new Error("a cover that defers on nothing passed");
+});
+
+await test("RECEIPT LAW passes a deck built on real facts", async () => {
+  const f = await writeJson("rich.json", { topic:"paylater", mode:"news", kicker:"Ibils", sources:["OJK"], slides:[
+    { kind:"cover",   brief:'HEADLINE: "Paylater lends you Rp2 juta at 0%. So who pays?"  BODY: "OJK logged Rp30,3 triliun in outstanding paylater debt."' },
+    { kind:"content", brief:'HEADLINE: "The merchant pays first"  BODY: "The store hands over 2 to 4 percent of your Rp2 juta purchase, because Kredivo brings a buyer who would have walked away."' },
+    { kind:"content", brief:'HEADLINE: "Then the late fee arrives"  BODY: "Miss the date and it is 3 percent per month, compounding. On Rp2 juta that is Rp60 ribu a month for doing nothing."' },
+    { kind:"content", brief:'HEADLINE: "Your limit is the product"  BODY: "Pay on time and the limit rises. OJK data shows 40 percent of users hit their ceiling within a year."' },
+    { kind:"closing", brief:'HEADLINE: "Check your ceiling"' }]});
+  const r = node([path.join(ROOT, "scripts/lint-plan.js"), f]);
+  if (r.status !== 0) throw new Error(`a journalism-grade deck was REJECTED:\n${r.stdout}`);
+});
+
+await test("a cover MAY ask a question — if it shows a receipt first", async () => {
+  // The reference account's covers are ALL questions. They work because they show a number and a
+  // name BEFORE they withhold. The old blanket ban on questions was half wrong.
+  const f = await writeJson("q.json", { topic:"t", mode:"news", kicker:"Ibils", sources:[], slides:[
+    { kind:"cover", brief:'HEADLINE: "OJK logged Rp30,3 triliun in paylater debt. Gimana modusnya?"' },
+    { kind:"content", brief:'HEADLINE: "The merchant pays"  BODY: "Kredivo takes 4 percent of every Rp2 juta basket, because the store gains a buyer."' },
+    { kind:"content", brief:'HEADLINE: "Late fees compound"  BODY: "It is 3 percent per month on the balance, so Rp2 juta costs Rp60 ribu extra."' },
+    { kind:"content", brief:'HEADLINE: "The ceiling rises"  BODY: "OJK shows 40 percent of users reach their limit within a year."' },
+    { kind:"closing", brief:'HEADLINE: "Check it"' }]});
+  const r = node([path.join(ROOT, "scripts/lint-plan.js"), f]);
+  if (/defers with no anchor/.test(r.stdout)) throw new Error("an anchored question cover was rejected");
+});
+
+await test("slide count is no longer clamped to 5-8", async () => {
+  const src = await liveCode("scripts/run-carousel.js");
+  if (/Math\.min\(8,/.test(src)) throw new Error("the 5-8 clamp is back — the reference runs 6-14 and pads nothing");
+});
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 await fs.rm(TMP, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
