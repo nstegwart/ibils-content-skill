@@ -24,5 +24,9 @@ have got this right, and would have got it wrong again on the next run.
 - **Comedy is Bahasa Indonesia. Story is English.** (Owner, 2026-07-14.) A joke does not survive
   translation — the timing lives in the particles (`sih`, `dong`, `deh`) and there is no English
   equivalent. A story is universal, so it goes to the global account.
+- **STORY goes to Reels on @ibils.global. COMEDY does NOT** — Reels is the global English surface, and
+  a lo/gue joke has no business there. Comedy ships to an Indonesian surface and, per the rule above,
+  **carries no handle at all**, so no account name is needed at generation time. Where it is posted is
+  a distribution decision, not a content one.
 - If a new surface appears, it gets a row HERE first. A generator that needs a handle and cannot find
   its surface in this table must **fail**, not guess.
