@@ -50,7 +50,19 @@ const LOGO_CARD = path.join(HERE, "..", "assets", "ibils-logo-card.png");
 // upscaled small one goes soft). So every composite below states the size it wants EXPLICITLY and
 // never inherits it from the asset file. Bumping an asset's resolution must NOT change the layout.
 const LOGO_PX = 128;     // App Store icon, top-right
-const PHONE_H = 778;     // closing-slide device mockup, height on a 1080x1350 slide.
+// THE CLOSING SLIDE IS TWO COLUMNS: type on the left, device on the right.
+//
+// It used to be "headline in a top band, phone in the middle", and codex never once obeyed it — it
+// kept setting the headline as three big lines down the left, which is FAR better looking, and then
+// the phone got pasted into the middle right up against the word it was colliding with. The layout
+// the model kept reaching for was the correct one; the brief was the thing that was wrong.
+//
+// So the columns are law now, and every number below is derived from them. The phone lives inside
+// PHONE_COL and is centred in it, which is what puts real air between the type and the device
+// instead of the ~5px the owner (correctly) called "kepepet".
+const PHONE_H = 620;     // closing-slide device mockup, height on a 1080x1350 slide.
+const TYPE_COL = 560;    // x < this belongs to the headline. The phone may never enter it.
+const PHONE_COL = [TYPE_COL, 1080];
                          // 778 = the OLD asset's exact height, so the new hi-res source lands at
                          // the same on-slide size the shipped decks already use.
 const BADGES_W = 480;    // store badge strip, width
@@ -72,6 +84,24 @@ const ONLY = (() => {
   });
   return v.map((s) => s.trim().replace(/\.png$/i, "")).filter(Boolean);
 })();
+
+// A FINISHED SLIDE CARRIES A STAMP, AND FINALIZE REFUSES TO TOUCH IT TWICE.
+//
+// Until now the only thing standing between this script and a double-composited slide was the caller
+// REMEMBERING to pass --only. That is a convention, not a guard, and it broke exactly the way
+// conventions break: a re-run over a finished deck reported "the reserved top-right corner is NOT
+// empty — codex drew in it" for 11 slides in a row. codex had drawn nothing. The artwork in the
+// corner was THIS SCRIPT'S OWN LOGO, from the previous run, and the check could not tell its own
+// output from a defect.
+//
+// So the slide says whether it is done. The stamp lives in the PNG itself, not in a sidecar file that
+// can be lost, copied away from, or fall out of sync with the pixels it describes.
+const STAMP = "ibils-finalized-v1";
+
+async function isFinalized(file) {
+  const r = await identify(["-format", "%[comment]", file]).catch(() => null);
+  return !!r && r.stdout.includes(STAMP);
+}
 
 async function finalizeOne(file) {
   const id = await identify(["-format", "%w %h", file]);
@@ -139,6 +169,13 @@ async function main() {
   for (const name of entries) {
     const file = path.join(DIR, name);
     try {
+      // already signed? then it is DONE, and running over it again would stack a second logo and then
+      // accuse itself of vandalism. Idempotent, without the caller having to remember a flag.
+      if (await isFinalized(file)) {
+        console.log(`${name}: already finalised — skipped`);
+        ok++;
+        continue;
+      }
       await finalizeOne(file);
       // closing slide: composite the real iPhone-splash (real iB logo — never
       // hallucinated) and the store badges into the reserved zones.
@@ -188,21 +225,54 @@ async function main() {
         // exactly where the phone will land, look at what is already there, and REFUSE rather than
         // paste a phone over a headline.
         const phoneW = Math.round(PHONE_H * 0.481);      // the mockup's aspect
-        const zoneX = Math.round((1080 - phoneW) / 2) + 150;
-        const zoneY = Math.round((1350 - PHONE_H) / 2) + 70;
+        // centred inside the phone column — this is what buys the air on BOTH sides of the device
+        const zoneX = Math.round((PHONE_COL[0] + PHONE_COL[1] - phoneW) / 2);
+        const zoneY = Math.round((1350 - PHONE_H) / 2) - 30;
+        const dx = zoneX + Math.round(phoneW / 2) - 540;    // gravity-center offsets
+        const dy = zoneY + Math.round(PHONE_H / 2) - 675;
+
+        // LOOK FOR EDGES. NOT VARIANCE, AND NOT BRIGHTNESS.
+        //
+        // This gate has now been wrong twice, in two different ways, and both failures were the same
+        // mistake: measuring a property that type happens to have ON ONE PALETTE instead of the property
+        // that MAKES something type.
+        //
+        //   1. STANDARD DEVIATION. Refused above 0.10, and it passed the slide that shipped with the
+        //      phone pressed against the word "number" — because the tail of one letter poking into a
+        //      big flat rectangle barely moves that rectangle's standard deviation. A statistic that
+        //      averages over the whole zone cannot see a small intrusion at the edge of it.
+        //
+        //   2. BRIGHT-PIXEL COUNT. Assumed cream type on a deep-green ground. Then the very next plate
+        //      came back as cream NEWSPRINT, where the EMPTY background is 100% bright, and the gate
+        //      refused a perfectly clean slide. It was measuring the palette, not the ink.
+        //
+        // What is actually true of type, on any ground, in any palette: IT HAS HARD EDGES. Background —
+        // flat, textured, papery, dark, light — does not. So run an edge filter and ask what fraction of
+        // the zone has an edge in it. Measured on real plates: an empty column scores 0.00000; a column
+        // with a headline in it scores 0.021-0.028. That is not a threshold, that is a chasm.
+        //
+        // Check a GUTTER around the device too, not just its footprint: type that stops one pixel short
+        // of the bezel is not a near miss, it is the collision the owner just sent back.
+        const GUTTER = 36;
+        const gx = Math.max(0, zoneX - GUTTER);
+        const gy = Math.max(0, zoneY - GUTTER);
+        const gw = Math.min(1080 - gx, phoneW + GUTTER * 2);
+        const gh = Math.min(1350 - gy, PHONE_H + GUTTER * 2);
         const zone = await convert([file, "-alpha", "remove",
-          "-crop", `${phoneW}x${PHONE_H}+${zoneX}+${zoneY}`, "+repage",
-          "-format", "%[fx:standard_deviation]", "info:"]);
-        const zsd = parseFloat(zone.stdout);
-        if (Number.isFinite(zsd) && zsd > 0.10) {
+          "-crop", `${gw}x${gh}+${gx}+${gy}`, "+repage",
+          "-colorspace", "gray",
+          "-morphology", "EdgeIn", "Octagon:1", "-threshold", "25%",
+          "-format", "%[fx:mean]", "info:"]);
+        const inkFrac = parseFloat(zone.stdout);
+        if (Number.isFinite(inkFrac) && inkFrac > 0.003) {
           throw new Error(
-            `the closing slide's phone zone (${phoneW}x${PHONE_H} at ${zoneX},${zoneY}) is NOT EMPTY ` +
-            `(stddev ${zsd.toFixed(3)}) — there is type or artwork there, and the phone is about to be ` +
-            `pasted on top of it. Re-roll the plate with the void actually reserved.`);
+            `the closing slide's phone zone (${gw}x${gh} at ${gx},${gy}, incl. a ${GUTTER}px gutter) is ` +
+            `${(inkFrac * 100).toFixed(2)}% edges — that is TYPE OR ARTWORK, and the phone is about to be ` +
+            `pasted on top of it. Re-roll the plate: the headline must stay left of x=${TYPE_COL}.`);
         }
         await convert([
           file, "(", CLOSING_PHONE, "-resize", `x${PHONE_H}`, ")",
-          "-gravity", "center", "-geometry", "+150+70", "-composite",
+          "-gravity", "center", "-geometry", `${dx >= 0 ? "+" : ""}${dx}${dy >= 0 ? "+" : ""}${dy}`, "-composite",
           file
         ]);
         // store badges — small, composited from the hi-res official asset
@@ -216,6 +286,8 @@ async function main() {
       } else {
         console.log(`${name}: 1080x1350 + logo`);
       }
+      // sign it. this is what makes a second run a no-op instead of a disaster.
+      await convert([file, "-set", "comment", STAMP, file]);
       ok++;
     } catch (e) {
       console.error(`${name}: FAILED — ${e.message}`);

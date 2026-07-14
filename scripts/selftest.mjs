@@ -429,6 +429,54 @@ await test("ENDCARD: the app screen is a real screenshot, never drawn", async ()
   if (!/no app screenshot at/.test(src)) throw new Error("a missing screenshot degrades to something instead of stopping");
 });
 
+// ---------------------------------------------------------------- the closing slide
+// The owner sent this slide back with "phone frame masih terlalu mepet". The phone was pressed
+// against the word "number". A gate was supposed to prevent exactly that, and it passed the slide.
+
+await test("CLOSING: the collision gate looks for EDGES, not variance or brightness", async () => {
+  const src = await liveCode("scripts/finalize.js");
+  const gate = src.slice(src.indexOf("const GUTTER"));
+  if (!/EdgeIn|morphology/.test(gate)) {
+    // stddev could not see one letter's tail intruding into a big flat rectangle (it shipped).
+    // a bright-pixel count then failed a CLEAN slide, because that plate came back as cream newsprint
+    // where the EMPTY ground is 100% bright. both measured the palette; only edges measure the ink.
+    throw new Error("the phone-collision gate is palette-dependent — it will pass a dark slide with type in the zone, or fail a clean light one");
+  }
+  if (!/GUTTER/.test(gate)) throw new Error("the gate checks the phone's footprint but not a gutter around it — type stopping 1px short of the bezel is the same collision");
+});
+
+await test("CLOSING: the phone is confined to its column, away from the type", async () => {
+  const src = await liveCode("scripts/finalize.js");
+  if (!/TYPE_COL|PHONE_COL/.test(src)) throw new Error("the closing slide has no column contract — the phone's position is a magic offset and will drift back onto the headline");
+});
+
+await test("finalize is IDEMPOTENT — running it twice changes nothing", async () => {
+  // Running finalize twice over a finished deck reported "the reserved top-right corner is NOT empty —
+  // codex drew in it" for 11 slides in a row. codex had drawn nothing. The artwork in the corner was
+  // THIS SCRIPT'S OWN LOGO, from the first run, and the check could not tell its output from a defect.
+  //
+  // This is a BEHAVIOURAL test and it has to be. The first version of it grepped the source for
+  // `isFinalized`, and when I disabled the actual call with `if (false)` to check the test bit, it
+  // still passed — the string was right there in the function that no longer ran. A test that reads
+  // the source instead of running it will happily certify a gate that has been switched off.
+  const dir = await fs.mkdtemp(path.join(TMP, "fin-"));
+  const f = path.join(dir, "12-closing.png");
+  // a plain plate: empty reserved corner, empty phone column, nothing to collide with
+  magick(["-size", "1080x1350", "xc:#0E3B33", f]);
+
+  const fin = path.join(ROOT, "scripts/finalize.js");
+  const r1 = node([fin, dir]);
+  if (r1.status !== 0) throw new Error(`first finalize failed, so idempotency is untestable: ${r1.stdout}${r1.stderr}`);
+  const h1 = magick([f, "-format", "%#", "info:"]).stdout.trim();
+
+  const r2 = node([fin, dir]);
+  if (r2.status !== 0) throw new Error(`the SECOND finalize failed — a finished slide must be a no-op, not an error: ${r2.stdout}${r2.stderr}`);
+  const h2 = magick([f, "-format", "%#", "info:"]).stdout.trim();
+
+  if (h1 !== h2) throw new Error("the second run CHANGED the slide — it is compositing a second logo/phone/badge set on top of the first");
+  if (!/already finalis/i.test(r2.stdout)) throw new Error("the second run did not recognise the slide as finished");
+});
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 await fs.rm(TMP, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
