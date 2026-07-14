@@ -350,6 +350,85 @@ await test("EVIDENCE LAW: amber marks only what MOVED", async () => {
   }
 });
 
+// ---------------------------------------------------------------- the score
+// Each of these three caught a real bug in the film it was written for, on the day it was written.
+// A gate that is not tested is a gate that quietly stops working, and you find out in the edit.
+
+const scoreSpec = async (name, body) => {
+  const f = path.join(TMP, name);
+  await fs.writeFile(f, body);
+  return f;
+};
+
+await test("SILENCE LAW: a note ringing into a declared silence is refused", async () => {
+  // the comedy score's band stops dead at the punch. the FIRST render left the bass ringing 0.9s into
+  // it — measured -23.7 dBFS across a window that was supposed to be nothing. you would not have heard
+  // it consciously. you would only have found the joke flat.
+  const f = await scoreSpec("bleed.mjs", `export default {
+    name: "bleed", duration: 6, silence: [[3, 5]],
+    notes: [{ inst: "sub", note: "F2", at: 2.0, dur: 1.5, gain: 0.3, ring: 0.8 }],  // ends 4.3 — INSIDE
+  };`);
+  const r = node([path.join(ROOT, "scripts/score.mjs"), f, path.join(TMP, "bleed.wav")]);
+  if (r.status === 0) throw new Error("a note rang straight through a declared silence and the score shipped");
+  if (!/NOT SILENT/.test(r.stdout + r.stderr)) throw new Error("it failed, but not for the silence — the gate is not the thing that caught it");
+});
+
+await test("SILENCE LAW: the rendered file is measured, not just the spec", async () => {
+  const src = await fs.readFile(path.join(ROOT, "scripts/score.mjs"), "utf8");
+  if (!/astats/.test(src) || !/RMS level dB/.test(src)) {
+    throw new Error("the silence is only checked against the note list — the echo tail and the envelopes are not in the note list");
+  }
+  // and it must not measure through `-v error`, which HIDES astats (it logs at info) and returns an
+  // empty string that reads exactly like silence. a muted gauge is not a quiet room.
+  const gate = src.slice(src.indexOf("go and LISTEN"));
+  if (/"-v", "error"/.test(gate)) throw new Error("the silence gate measures with -v error, which suppresses astats — it will read every score as silent");
+});
+
+await test("THE FIGURE DOES NOT SURVIVE THE TURN: banAfter is enforced", async () => {
+  const f = await scoreSpec("return.mjs", `export default {
+    name: "return", duration: 20,
+    banAfter: [{ inst: "pluck", from: 10, why: "the figure does not survive the turn" }],
+    notes: [{ inst: "pluck", note: "A4", at: 12, dur: 1, gain: 0.3 }],
+  };`);
+  const r = node([path.join(ROOT, "scripts/score.mjs"), f, path.join(TMP, "return.wav")]);
+  if (r.status === 0) throw new Error("the figure came back after the turn and nothing stopped it");
+});
+
+// ---------------------------------------------------------------- the film
+await test("LIGHT GATE: a shot too dark to read on a phone is refused", async () => {
+  const src = await fs.readFile(path.join(ROOT, "scripts/build-captioned.mjs"), "utf8");
+  if (!/const FLOOR = \d+/.test(src) || !/still too dark to read on a phone/.test(src)) {
+    throw new Error("nothing stops a black rectangle with a caption on it from shipping — 'sekarang semuanya gelap'");
+  }
+  if (!/signalstats/.test(src)) throw new Error("the darkness is judged by eye, not measured");
+});
+
+await test("THE SCORE IS AIMED AT THE CUT: picture length must equal the script", async () => {
+  const src = await fs.readFile(path.join(ROOT, "scripts/build-captioned.mjs"), "utf8");
+  // `-t 3.0` gives you "about" three seconds. nine shots of "about" cost half a second, and the score
+  // — whose every decision is a timestamp — ends up aimed at the wrong frame.
+  if (!/-frames:v/.test(src)) throw new Error("shots are cut by seconds, which drift; a frame count is an integer and does not");
+  if (!/the score is aimed here|the score is aimed at/.test(src)) {
+    throw new Error("nothing asserts that the assembled picture is as long as the script the music was written against");
+  }
+});
+
+await test("ENDCARD: the phone may not land on the caption or the logo", async () => {
+  // liveCode(), not readFile — this test first FAILED against the comment in make-endcard.mjs that
+  // WARNS you not to crop with `identify`. A check that reads prose as code will fail the file that
+  // documents the bug and pass the file that commits it.
+  const src = await liveCode("scripts/make-endcard.mjs");
+  const asserts = (src.match(/throw new Error/g) || []).length;
+  if (asserts < 3) throw new Error("the endcard places a phone, a logo and a caption in one frame and does not check that they miss each other — this exact collision shipped a broken closing slide");
+  if (/identify/.test(src)) throw new Error("`identify` cannot crop — a check written with it fails every card, including the clean ones");
+});
+
+await test("ENDCARD: the app screen is a real screenshot, never drawn", async () => {
+  const src = await fs.readFile(path.join(ROOT, "scripts/make-endcard.mjs"), "utf8");
+  if (!/app-screens|screenPath|SCREEN/.test(src)) throw new Error("the endcard invents its own app UI");
+  if (!/no app screenshot at/.test(src)) throw new Error("a missing screenshot degrades to something instead of stopping");
+});
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 await fs.rm(TMP, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
