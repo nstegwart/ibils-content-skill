@@ -10,9 +10,12 @@ The prompt for one slide is assembled from the fixed blocks below + that
 slide's `brief` and `pose`. Wording is verbatim and precise — that is what
 keeps a carousel consistent.
 
-Reference images attached to every slide: the four `assets/himel-pose-*.png`.
-For the CLOSING slide, `assets/ibils-icon.svg` is also attached so the logo on
-the phone's app-splash screen is the real iB mark, not an invented one.
+Reference images attached to every slide: the four `assets/himel-pose-*.png` —
+and NOTHING else. No logo asset is ever attached, on any slide, including the
+closing: codex is forbidden to draw the logo, the iB mark, or a phone at all.
+Both the logo and the closing-slide phone are composited afterwards by
+`scripts/finalize.js` from `assets/ibils-logo-card.png` and
+`assets/closing-phone.png`, so the mark is always the real one.
 
 ---
 
@@ -33,9 +36,10 @@ the slide is rejected.
 ```
 FOUR REFERENCE IMAGES of the mascot 'Himel' are attached, the SAME character
 in four poses. Use them ONLY to lock his identity: soft side-swept hair with
-bangs over one eye, a thin pointed line-crown, a scarf, a long tunic, puffy
-trousers, tall cuffed boots, a long cape — always clean BLACK-AND-WHITE manga
-ink, a gentle manga BOY (not a chibi, not a fat king).
+bangs over one eye, a solid banded crown with five ball-tipped points and small
+dot jewels along the band, a scarf, a long tunic, puffy trousers, tall cuffed
+boots, a long cape — always clean BLACK-AND-WHITE manga ink, a gentle manga BOY
+(not a chibi, not a fat king).
 CRITICAL: do NOT copy a reference pose. Draw Himel FRESH in the pose this
 slide asks for.
 ```
@@ -47,7 +51,7 @@ FORMAT — vertical Instagram carousel slide, portrait 4:5, canvas EXACTLY
 1080 x 1350 pixels. SAFE MARGIN: keep ALL text, the footer handle, the slide
 number and the mascot's head/crown at least 9% inside every edge.
 All text is set INTO the design as real typography, spelled EXACTLY, in
-Indonesian. No watermark, no signature, no extra text.
+ENGLISH. No watermark, no signature, no extra text.
 ```
 
 ## Block D — NO INVENT
@@ -77,7 +81,7 @@ restrained, editorial — a finished design asset.
 ```
 BRANDING — the slide has NO drawn logo and NO 'Ibils' wordmark. Keep the
 TOP-RIGHT corner empty (the real logo is composited there). Only draw the
-footer: a small '@ibils.savy' handle bottom-left and the slide number
+footer: a small handle bottom-left (from references/surfaces.md — English = @ibils.global) and the slide number
 bottom-right.
 ```
 
@@ -167,6 +171,9 @@ carousel. Himel stays the identical B&W manga character — only the pose change
 ## After generation — finalise
 
 Run `node scripts/finalize.js <slides-dir>`. It pads every slide to an exact
-1080x1350 4:5 frame (no crop) and composites the fixed glass-card logo into the
-TOP-RIGHT corner. On the closing slide it also composites the Play Store / App
-Store badges along the bottom strip — guaranteed position and styling.
+1080x1350 4:5 frame (no crop) and composites the real Ibils App Store icon
+(`assets/ibils-logo-card.png` — the teal-gradient rounded-square with the white
+iB mark; a 512px source rendered at 128px) into the TOP-RIGHT corner. On the
+closing slide it also composites the iPhone splash mockup
+(`assets/closing-phone.png`) and the Play Store / App Store badges along the
+bottom strip — guaranteed position and styling.

@@ -1,30 +1,25 @@
 #!/usr/bin/env node
 /**
- * Produce ONE complete IBILS carousel end-to-end and upload it to GCS.
+ * Produce ONE complete IBILS carousel end-to-end, locally.
  *
  *   topic -> (news fetch) -> codex writes plan.json -> lint gate ->
- *   gen-carousel (per-slide) -> finalize -> gcs-upload
+ *   plan -> gen-carousel (1 codex session per slide, parallel) -> finalize
  *
- * This is the unit a burst session runs. burst-daemon.js launches many of
- * these in parallel.
+ * Every slide gets its own codex session and they all run in parallel, so one carousel is one
+ * command — there is no pool, no rotation, no daemon.
  *
  * Usage:
- *   node run-carousel.js --mode news --topic "rupiah melemah" \
- *        --out <dir> [--account <email>] [--count <4-12>]
+ *   node run-carousel.js --mode news --topic "rupiah slides against the dollar" \
+ *        --out <dir> [--count <4-12>]
  *
- * Output: a finished carousel in <dir> (plan.json + slides/), uploaded to
- * gs://<bucket>/<content-id>/. Prints the content-id on success.
+ * Output: a finished carousel in <dir> (plan.json + slides/), kept on disk.
+ * Prints the output directory on success.
  */
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
-import {
-  discoverAccounts, listUsableAccounts, provisionCodexHome,
-  markExhausted, isRateLimited, isAuthDead
-} from "./accounts.js";
 
 const execFileP = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -37,14 +32,14 @@ function arg(flag, def) {
 const MODE = arg("--mode", "news");
 const TOPIC = arg("--topic", "");
 const OUT = path.resolve(arg("--out", `./carousel-${MODE}-${Date.now()}`));
-let ACCOUNT = arg("--account", ""); // resolved/rotated from the pool
-const triedAccounts = new Set();    // accounts already used (or burned) this run
-// --no-upload: run fully LOCALLY — skip the GCS upload and keep the folder.
-const NO_UPLOAD = process.argv.includes("--no-upload");
 // content slides 5-7 (carousel = count + cover + closing = 7-9 slides).
 // Real human carousels run 6-9 slides total; a 14-slide deck on one narrow
 // topic turns repetitive and reads as AI padding.
-const COUNT = Math.max(5, Math.min(8, Number(arg("--count", "")) ||
+// LENGTH FOLLOWS THE STORY. The old clamp was 5-8, which made an inverted rule
+// unoverridable in code: the reference account in this niche runs 6-14 slides (median 11),
+// and pads nothing. A deck is not bad for being long — it is long for being empty. The gate
+// on quality is the INFORMATION requirement in lint-plan.js, not a slide budget.
+const COUNT = Math.max(6, Math.min(15, Number(arg("--count", "")) ||
   (5 + Math.floor(Math.random() * 3))));
 
 const KICKERS = {
@@ -63,58 +58,34 @@ function nanoid(n = 6) {
   return s;
 }
 
-// pick a usable pool account not already tried this run
-async function pickAccount() {
-  const pool = (await listUsableAccounts())
-    .filter((a) => !triedAccounts.has(a.email));
-  const choice = pool[Math.floor(Math.random() * pool.length)];
-  return choice ? choice.email : null;
-}
-
-// run codex once as the current ACCOUNT; capture output -> { out, dead }.
-// `dead` means the account is rate-limited / auth-dead and should be rotated.
 function codex(promptText) {
   return new Promise((resolve) => {
-    (async () => {
-      const home = path.join(os.tmpdir(), `rc-${nanoid(8)}`);
-      const acc = (await discoverAccounts()).find((a) => a.email === ACCOUNT);
-      if (acc) await provisionCodexHome(home, acc);
-      const args = [
-        "exec", "-m", "gpt-5.5",
-        "-c", 'model_reasoning_effort="medium"',
-        "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check",
-        "-C", OUT, "-"
-      ];
-      const env = { ...process.env, NO_COLOR: "1", CODEX_HOME: home };
-      const child = spawn("codex", args, {
-        cwd: OUT, env, stdio: ["pipe", "pipe", "pipe"]
-      });
-      let buf = "";
-      let killedForLimit = false;
-      const grab = (d) => {
-        buf += d.toString();
-        if (buf.length > 200000) buf = buf.slice(-200000);
-        // kill a rate-limited / auth-dead call immediately instead of letting
-        // it hang to the 6-min timeout — the plan stage then rotates fast.
-        if (!killedForLimit && (isRateLimited(buf) || isAuthDead(buf))) {
-          killedForLimit = true;
-          child.kill("SIGKILL");
-        }
-      };
-      child.stdout.on("data", grab);
-      child.stderr.on("data", grab);
-      const timer = setTimeout(() => child.kill("SIGKILL"), 6 * 60 * 1000);
-      child.on("close", async () => {
-        clearTimeout(timer);
-        await fs.rm(home, { recursive: true, force: true }).catch(() => {});
-        resolve({ out: buf, dead: isRateLimited(buf) || isAuthDead(buf) });
-      });
-      child.stdin.end(promptText);
-    })();
+    const args = [
+      "exec", "-m", "gpt-5.5",
+      "-c", 'model_reasoning_effort="medium"',
+      "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check",
+      "-C", OUT, "-"
+    ];
+    const child = spawn("codex", args, {
+      cwd: OUT, env: { ...process.env, NO_COLOR: "1" }, stdio: ["pipe", "pipe", "pipe"]
+    });
+    let buf = "";
+    const grab = (d) => {
+      buf += d.toString();
+      if (buf.length > 200000) buf = buf.slice(-200000);
+    };
+    child.stdout.on("data", grab);
+    child.stderr.on("data", grab);
+    const timer = setTimeout(() => child.kill("SIGKILL"), 6 * 60 * 1000);
+    child.on("close", async () => {
+      clearTimeout(timer);
+      resolve({ out: buf });
+    });
+    child.stdin.end(promptText);
   });
 }
 
-// ask codex to write the content plan -> { plan, dead }
+// ask codex to write the content plan -> { plan }
 async function writePlan(articles) {
   const planPath = path.join(OUT, "plan.json");
   const prompt = [
@@ -129,11 +100,14 @@ async function writePlan(articles) {
     "IMITATE example-carousels.md. Those are real human carousels — your hooks,",
     "voice, and rhythm MUST match their punch. Every headline is a command, a",
     "warning, a myth it kills, a shock number, or a fear question — NEVER a flat",
-    "descriptive label. Spoken Bahasa Indonesia, address the reader as 'kamu',",
-    "casual (nggak/kalo/doang), a few ALL-CAPS punch words, confrontational,",
-    "real emotional stakes. The carousel is ONE argument built slide by slide.",
-    "CLEAR THE VALUE BAR in content-rules.md: relatable to an ordinary",
-    "Indonesian's money life, teach ONE real lesson with its WHY, clear takeaway.",
+    "descriptive label. Written in ENGLISH — spoken, second person 'you',",
+    "contractions, a few ALL-CAPS punch words, confrontational, real emotional",
+    "stakes. The carousel is ONE argument built slide by slide.",
+    "CLEAR THE VALUE BAR in content-rules.md: relatable to an ordinary person's",
+    "money life, teach ONE real lesson with its WHY, clear takeaway.",
+    "NEVER write like an AI: no balanced triplets ('faster, easier, and more",
+    "accurate'), no 'unlock/seamless/effortlessly/game-changer', no empty payoffs",
+    "('peace of mind', 'financial freedom'), no 'In today's fast-paced world'.",
     "For education mode, anchor the lesson in a real, well-known finance-book",
     "idea (named plainly).",
     "Every body adds NEW concrete info (action / number / mechanism) — never",
@@ -145,20 +119,27 @@ async function writePlan(articles) {
     `Use kicker exactly: "${KICKERS[MODE] || "Ibils News"}".`,
     "Each slide: { kind, brief, pose }. brief carries the verbatim copy.",
     "pose = Himel's context-matched action; props presented facing the viewer.",
-    "closing slide: { kind:'closing', brief:'HEADLINE: \"<short CTA>\"', pose:'...' }.",
+    // The linter parses HEADLINE:/BODY: out of `brief` with a regex. If the shape is not stated
+    // HERE, it is only obeyed because the model happened to follow a referenced doc — and when it
+    // does not, every slide trips "missing HEADLINE" and the run dies in the gate loop.
+    "BRIEF SHAPE — exact, mandatory, both fields on content slides:",
+    "  content: brief: 'HEADLINE: \"<hook>\"  BODY: \"<new concrete info>\"'",
+    "  cover:   brief: 'HEADLINE: \"<hook>\"'",
+    "  closing: brief: 'HEADLINE: \"<short CTA>\"'",
+    "A content slide with no BODY is rejected by the linter.",
     `Write ONLY the JSON to the file: ${planPath}`,
     "Shape: {mode,topic,kicker,sources:[],slides:[...]}. Reply DONE when written."
   ].filter(Boolean).join("\n");
-  const r = await codex(prompt);
+  await codex(prompt);
   try {
     const plan = JSON.parse(await fs.readFile(planPath, "utf8"));
     if (Array.isArray(plan.slides) && plan.slides.length >= 6) {
-      return { plan, dead: false };
+      return { plan };
     }
   } catch {
     /* invalid */
   }
-  return { plan: null, dead: r.dead };
+  return { plan: null };
 }
 
 async function step(name, file, args) {
@@ -218,33 +199,17 @@ async function fixPlan(report, articles) {
 async function main() {
   await fs.mkdir(path.join(OUT, "slides"), { recursive: true });
 
-  // 0. resolve a usable pool account. The daemon no longer pins one account
-  //    to a 50-session wave, so each session self-picks — spreading load
-  //    across the pool instead of instantly rate-limiting one account.
-  if (ACCOUNT) triedAccounts.add(ACCOUNT);
-  const usableNow = (await listUsableAccounts()).map((a) => a.email);
-  if (!ACCOUNT || !usableNow.includes(ACCOUNT)) ACCOUNT = await pickAccount();
-  if (!ACCOUNT) throw new Error("no usable codex account in the pool");
-
   // 1. source material
   let articles = "";
   if (MODE === "news") {
     articles = await step("news", "news.js", ["--topic", TOPIC, "--limit", "8"]);
   }
 
-  // 2. plan — codex accounts rate-limit, so rotate accounts until one writes a
-  //    valid plan (a burned account is marked exhausted so the pool drains).
+  // 2. plan
   let plan = null;
-  for (let tryNo = 1; tryNo <= 4 && !plan; tryNo++) {
-    triedAccounts.add(ACCOUNT);
+  for (let tryNo = 1; tryNo <= 3 && !plan; tryNo++) {
     const r = await writePlan(articles);
     plan = r.plan;
-    if (!plan && tryNo < 4) {
-      if (r.dead) await markExhausted(ACCOUNT).catch(() => {});
-      const next = await pickAccount();
-      if (!next) break;
-      ACCOUNT = next;
-    }
   }
   if (!plan) throw new Error("plan write failed");
 
@@ -284,33 +249,23 @@ async function main() {
   if (!gateOk) throw new Error("plan failed the copy quality gates (lint + critic)");
 
   // 3. generate + finalise
-  const genArgs = [path.join(OUT, "plan.json"), path.join(OUT, "slides")];
-  if (ACCOUNT) genArgs.push("--account", ACCOUNT);
-  await step("gen", "gen-carousel.js", genArgs);
+  await step("gen", "gen-carousel.js", [
+    path.join(OUT, "plan.json"), path.join(OUT, "slides")
+  ]);
   await step("finalize", "finalize.js", [path.join(OUT, "slides")]);
 
-  // 4. upload — skipped with --no-upload (local run: carousel stays in OUT)
-  if (NO_UPLOAD) {
-    console.log(`CAROUSEL DONE (local): ${OUT}`);
-    return;
-  }
-  const contentId =
-    `${new Date().toISOString().slice(0, 10)}-${slug(plan.topic || TOPIC || MODE)}-${nanoid()}`;
-  // UPLOAD_TARGET=drive -> Google Drive (rclone); else Google Cloud Storage.
-  const uploadScript =
-    process.env.UPLOAD_TARGET === "drive" ? "drive-upload.js" : "gcs-upload.js";
-  await step("upload", uploadScript, [OUT, contentId]);
-  console.log(`CAROUSEL DONE: ${contentId}`);
+  // Done. The carousel STAYS on disk.
+  //
+  // There used to be an upload step here (Google Cloud Storage / Drive) and, right after it, a
+  // `fs.rm(OUT, {recursive:true})` that deleted the run's own output — correct only because the
+  // work had just been shipped to a bucket. With the upload gone, that cleanup would mean
+  // "generate a carousel, then throw it away". It is deliberately NOT here. Runs are local and kept.
+  console.log(`\nCAROUSEL DONE: ${OUT}`);
 }
 
-main()
-  .then(async () => {
-    // a local run keeps its folder; an uploaded one is dropped so the burst
-    // disk never fills up with finished work.
-    if (!NO_UPLOAD) await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
-  })
-  .catch(async (e) => {
-    console.error("ERROR", e.message);
-    if (!NO_UPLOAD) await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
-    process.exit(1);
-  });
+main().catch((e) => {
+  console.error("ERROR", e.message);
+  // Do NOT delete OUT on failure either — a half-finished carousel is exactly what you want to
+  // look at when diagnosing why it failed.
+  process.exit(1);
+});

@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-06-14T14:38:49.360Z",
+  "platform": "ios",
+  "locale": "en-US",
+  "language": "en",
+  "currency": "USD",
+  "country_code": "US",
+  "api_base": "http://127.0.0.1:8999/api",
+  "email": "storekit.ios.en-us.usd-ios-20260614@example.com",
+  "password_storage": "not persisted; supplied by STOREKIT_PASSWORD only during this run",
+  "user_id": "3321f659-2562-40a8-b0b2-b023d6ed9376",
+  "book_id": "972af114-f58f-43e2-a91e-893f42c21721",
+  "seed": {
+    "wallet_count": 3,
+    "transaction_count": 6,
+    "budget_count": 1,
+    "monthly_income": 10400,
+    "monthly_expense": 463
+  }
+}

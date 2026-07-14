@@ -8,7 +8,7 @@ description: "Generate a finished Ibils Instagram carousel (cover + content + cl
 Turns a topic (or the latest finance news) into a complete, posting-ready
 Instagram carousel. Every slide is ONE image rendered by codex's NATIVE image
 tool — headline, body, mascot and layout all baked in. Branding (the Ibils
-glass-card logo) is composited afterwards for pixel-perfect consistency.
+real Ibils App Store icon) is composited afterwards for pixel-perfect consistency.
 
 This skill uses the codex native image tool — NOT the `imagegen` skill and NOT
 the OpenAI Image API. No `OPENAI_API_KEY` is needed.
@@ -30,7 +30,8 @@ the OpenAI Image API. No `OPENAI_API_KEY` is needed.
 
 - `mode` — one of: `news`, `education`, `marketing`, `insight` (default `news`).
 - `topic` — optional focus phrase.
-- `count` — content slides, default 10 (carousel = count + 2).
+- `count` — content slides, default 6 (carousel = count + 2). Clamped 5-8: content-rules
+  calls a 12-slide deck the #1 'AI-generated' tell, and the code enforces the clamp.
 - `outdir` — output directory, default `./carousel-<mode>-<date>`.
 
 ## Workflow (do every step in order)
@@ -57,7 +58,7 @@ listed there, and must never draw a fabricated app screen.
 
 Produce the plan JSON described in `content-rules.md` §6: a cover, `count`
 content slides, a closing. Save it as `<outdir>/plan.json`.
-- Copy in natural Bahasa Indonesia, following the WRITING FORMULA in
+- Copy in natural ENGLISH (the IG account is global), following the WRITING FORMULA in
   `content-rules.md` §4 — every body adds new concrete information.
 - Every factual claim traces to a fetched article; fill the `sources` array.
 - Each slide gets a `brief` (verbatim copy + layout hint) and a `pose` (Himel's
@@ -89,14 +90,14 @@ character, broken anatomy). `references/styles.md` documents the prompt blocks;
 
 Run `node scripts/finalize.js <outdir>/slides`. This pads every slide to an
 exact 1080x1350 4:5 frame (no content cropped) and composites the fixed
-glass-card logo into the TOP-RIGHT corner. On the closing slide it also
+Ibils App Store icon into the TOP-RIGHT corner. On the closing slide it also
 composites the Play Store / App Store badges along the bottom strip.
 
 ### 6. Verify before reporting
 
 Open the finalised slides and check, slide by slide:
 - all are exactly 1080x1350;
-- the glass-card logo sits identically in the TOP-RIGHT corner of every slide;
+- the App Store icon sits identically in the TOP-RIGHT corner of every slide;
 - Himel is the same character, in a different pose per slide;
 - no codex-drawn logo and no 'Ibils' wordmark text anywhere;
 - text is crisp, correctly spelled, no AI artefacts;
@@ -113,17 +114,12 @@ mascot, garbled art) or wrong copy.
 
 1. Find the carousel folder. The user names it, or it is the most recent
    `carousel-*` / `./carousels/<id>` directory. It MUST contain `plan.json`.
-   If the user points at a GCS content-id, download it once first:
-   `gsutil -m cp -r gs://<bucket>/<content-id> ./carousels/` — then work locally.
 2. If the COPY is wrong: open `plan.json`, find the slide, fix the text inside
    its `brief` (the `HEADLINE` / `BODY` parts) to exactly what the user wants.
    Image-only problem (copy already correct) → skip this step.
 3. Regenerate ONLY the affected slide(s):
-   `node ~/.codex/skills/ibils-carousel/scripts/regen.js <dir> --slide <N> --no-upload`
    - `--slide` accepts a number (`3`), a kind (`cover` / `closing`) or a name
      (`03-statement`); comma-separate or repeat for several.
-   - `--no-upload` keeps it fully local — no GCS. Drop it (and supply `$GCS_KEY`)
-     only when the user explicitly wants the fix pushed to GCS.
    regen re-renders just those slides; the rest of the carousel is untouched.
 4. Open the regenerated slide and verify: correct anatomy (two arms/hands),
    nothing cropped, text crisp and correctly spelled, exactly 1080x1350. Still
@@ -135,20 +131,16 @@ mascot, garbled art) or wrong copy.
 - `scripts/news.js` — zero-dependency live finance-news fetcher (RSS).
 - `scripts/lint-plan.js` — copy-quality gate; FAILs vague / restated / teaser
   copy so it can never reach image generation.
-- `scripts/accounts.js` — codex account pool: discovers accounts, drops dead /
-  rate-limited ones, provisions isolated homes.
 - `scripts/gen-carousel.js` — renders every slide via `codex exec -i` (Himel
-  references attached); runs the linter as a hard gate, rotates accounts on
-  death; reads `plan.json`, writes raw slides.
+  references attached); runs the linter as a hard gate; reads `plan.json`, writes raw slides.
 - `scripts/finalize.js` — normalises slides to 1080x1350 + composites the logo.
 - `scripts/regen.js` — regenerate / fix a carousel; `--slide` for one slide,
-  `--no-upload` to stay fully local.
 - `references/content-rules.md` — the content "tata bahasa" (non-negotiable).
 - `references/styles.md` — the 4 visual styles + fixed image-prompt blocks.
 - `references/ibils-app.md` — the real Ibils app features + the no-fake-UI
   visual rule (source of truth for `marketing` mode).
 - `assets/himel-pose-*.png` — 4 Himel identity references.
-- `assets/ibils-logo-card.png` — the glass-card logo, composited top-right on
+- `assets/ibils-logo-card.png` — the real Ibils App Store icon, composited top-right on
   every slide.
 - `assets/store-badges.png` — Play Store + App Store badges, composited along
   the bottom of the closing slide.
