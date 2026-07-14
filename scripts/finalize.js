@@ -136,8 +136,24 @@ async function main() {
         const tag = path.basename(file, ".png");
         const srcStrip = path.join(DIR, `.bg-src-${tag}.png`);
         const patchTile = path.join(DIR, `.bg-patch-${tag}.png`);
+        // This strip is asserted to be CLEAN BACKGROUND, and it is then tiled across the closing
+        // band. Nothing checked that. It sits at x990-1070, y270-530; the logo sits at x906-1034,
+        // y46-174 — they SHARE 44px of x and clear each other in y by only 96px. Raise LOGO_PX to
+        // 224 and this strip samples the logo itself and tiles it across the slide, silently, exit
+        // code 0. Guard the invariant instead of hoping.
+        const STRIP = { x: 990, y: 270, w: 80, h: 260 };
+        const logoBox = { x1: 1080 - 46 - LOGO_PX, x2: 1080 - 46, y1: 46, y2: 46 + LOGO_PX };
+        const overlaps =
+          STRIP.x < logoBox.x2 && STRIP.x + STRIP.w > logoBox.x1 &&
+          STRIP.y < logoBox.y2 && STRIP.y + STRIP.h > logoBox.y1;
+        if (overlaps) {
+          throw new Error(
+            `background-sample strip (${STRIP.x},${STRIP.y} ${STRIP.w}x${STRIP.h}) overlaps the ` +
+            `${LOGO_PX}px logo — it would tile the LOGO across the closing band. Move the strip.`
+          );
+        }
         try {
-          await convert([file, "-crop", "80x260+990+270", "+repage", srcStrip]);
+          await convert([file, "-crop", `${STRIP.w}x${STRIP.h}+${STRIP.x}+${STRIP.y}`, "+repage", srcStrip]);
           await convert(["-size", "690x260", "tile:" + srcStrip, patchTile]);
           await convert([
             file, patchTile, "-geometry", "+390+1040", "-composite", file
