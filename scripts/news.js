@@ -3,7 +3,8 @@
  * Fetch the latest, most actual Indonesian finance news from valid sources.
  * Zero npm dependencies — uses fetch + a small regex RSS parser.
  *
- * Source: Google News RSS (Bahasa Indonesia). Every item carries a real
+ * Source: Google News RSS. Global English finance news by default (NEWS_LOCALE=id for Indonesian
+ * market sources). Every item carries a real
  * publisher name, link, and publish date — these become the cited sources.
  *
  * Usage:
@@ -21,28 +22,46 @@ const TOPIC = arg("--topic", "");
 const LIMIT = Number(arg("--limit", "6")) || 6;
 const TIMEOUT_MS = 9000;
 
+// WHICH STORIES WE READ.
+// The carousel now ships in ENGLISH for a global IG account, so the default sources are global
+// English finance news. Ibils is an Indonesian product, though, so Indonesian market news is still
+// a legitimate feed — set NEWS_LOCALE=id for it. The COPY is written in English either way; this
+// only chooses what we read.
+const ID_MODE = process.env.NEWS_LOCALE === "id";
+const LOCALE = ID_MODE ? "&hl=id&gl=ID&ceid=ID:id" : "&hl=en-US&gl=US&ceid=US:en";
+
+const Q = ID_MODE
+  ? {
+      market: 'keuangan OR rupiah OR inflasi OR "Bank Indonesia" Indonesia when:7d',
+      personal: "keuangan pribadi OR budgeting OR menabung Indonesia when:14d",
+      topic: (t) => `${t} keuangan Indonesia dampak masyarakat when:7d`,
+      marketName: "Google News — Keuangan Indonesia",
+      personalName: "Google News — Keuangan Pribadi",
+    }
+  : {
+      market: 'inflation OR "interest rates" OR "cost of living" OR "central bank" when:7d',
+      personal: "personal finance OR budgeting OR saving money OR overspending when:14d",
+      topic: (t) => `${t} personal finance impact when:7d`,
+      marketName: "Google News — Money & Markets",
+      personalName: "Google News — Personal Finance",
+    };
+
 // Recency-first finance feeds. A topic, when given, leads the list.
 function feeds() {
   const list = [
     {
-      name: "Google News — Keuangan Indonesia",
-      url: "https://news.google.com/rss/search?q=" +
-        encodeURIComponent("keuangan OR rupiah OR inflasi OR \"Bank Indonesia\" Indonesia when:7d") +
-        "&hl=id&gl=ID&ceid=ID:id"
+      name: Q.marketName,
+      url: "https://news.google.com/rss/search?q=" + encodeURIComponent(Q.market) + LOCALE
     },
     {
-      name: "Google News — Keuangan Pribadi",
-      url: "https://news.google.com/rss/search?q=" +
-        encodeURIComponent("keuangan pribadi OR budgeting OR menabung Indonesia when:14d") +
-        "&hl=id&gl=ID&ceid=ID:id"
+      name: Q.personalName,
+      url: "https://news.google.com/rss/search?q=" + encodeURIComponent(Q.personal) + LOCALE
     }
   ];
   if (TOPIC) {
     list.unshift({
       name: `Google News — ${TOPIC}`,
-      url: "https://news.google.com/rss/search?q=" +
-        encodeURIComponent(`${TOPIC} keuangan Indonesia dampak masyarakat when:7d`) +
-        "&hl=id&gl=ID&ceid=ID:id"
+      url: "https://news.google.com/rss/search?q=" + encodeURIComponent(Q.topic(TOPIC)) + LOCALE
     });
   }
   return list;

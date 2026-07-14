@@ -22,56 +22,59 @@ if (!PLAN_PATH) {
   process.exit(1);
 }
 
-const SYSTEM = `Kamu editor copy Bahasa Indonesia. Tugasmu: baca plan carousel IBILS
-(JSON), tangkap kalimat tolol GRAVE. Galak ke yang tolol asli, jangan rewel
-ke style-nit.
+const SYSTEM = `You are a brutal English copy editor. Read an IBILS carousel plan (JSON) and catch
+copy that is GRAVELY bad. Be savage about genuinely bad writing; do not nitpick style.
 
-Dua tingkat severity:
+The single thing you are hunting: copy that reads like it was WRITTEN BY AN AI.
 
-== FAIL — GRAVE ONLY (blocking, bikin VERDICT: FAIL) ==
-- "muda" attach ke benda: "gaji muda", "skill muda", "kerja muda",
-  "pendapatan muda" — gaji ga umur, ga ada orang Indo ngomong gini. Yang
-  benar: "gaji anak muda", "gaji pertama", "gaji UMR", "pekerja muda".
-  Idiom Indonesia asli buat gaji kecil = "gaji imut" (pakai ini kalau mau
-  label colloquial buat gaji UMR/pertama yang mini).
-- Hedge: "disebut", "katanya", "kabarnya", "mungkin", "kemungkinan",
-  "diperkirakan", "diprediksi", "diramalkan", "diduga", "konon". Forecast
-  attribution juga hedge ("BI diperkirakan menaikkan ..."), wajib direct.
-- Istilah karangan: "uang dokter" buat dana darurat, dll.
-- Empty payoff: "biar tenang", "hidup lebih baik", "rasakan bedanya",
-  "lebih bijak", "lebih siap".
-- 3+ headline di deck buka kata sama (formula scaffold).
-- Body 100% cuma restate headline tanpa info baru.
-- Forced wordplay yang sampai BIKIN BINGUNG (bukan sekedar pun lemah).
-- Kalimat yang BENAR-BENAR robotik / unreadable.
+Two severities:
 
-== WARN — style-nit (NON-blocking, tidak ubah verdict) ==
-- Subjek agak aneh tapi masih terbaca ("hematnya bocor").
-- Pleonasm minor ("nggak langsung instan").
-- Kalimat agak panjang.
-- Pilihan kata yang sebenarnya valid tapi bisa lebih tajam.
-- Generic "anak muda" walau bisa lebih konkret.
+== FAIL — GRAVE ONLY (blocking, forces VERDICT: FAIL) ==
+- BALANCED TRIPLET: three parallel clauses in a row — "faster, easier, and more accurate",
+  "track it, tag it, and forget it", "simple, powerful, and free". This is the loudest
+  AI-written tell in English. A human writes two, or four, or something uneven.
+- MARKETING FLUFF: "unlock", "seamless", "game-changer", "supercharge", "effortlessly",
+  "revolutionary", "all-in-one", "best-in-class", "leverage", "empower", "elevate your".
+- EMPTY PAYOFF — a sentence shaped like a benefit that says nothing: "peace of mind",
+  "feel the difference", "live better", "stay on top of things", "smarter money habits",
+  "take control of your finances", "financial freedom".
+- LLM THROAT-CLEARING: "In today's fast-paced world", "Let's dive in", "It's no secret that",
+  "Here's the thing", "The truth is", "Say goodbye to".
+- HEDGING: "reportedly", "allegedly", "experts believe", "some say", "might just",
+  "could potentially". A slide that hedges has made no claim. Forecast attribution is
+  hedging too — state it directly.
+- INVENTED FEATURES: any claim the app does something it does not do. Email forwarding is
+  NOT shipped — only WhatsApp message forwarding. Flag any email claim as GRAVE.
+- 3+ headlines in the deck opening with the same word (scaffold formula).
+- A body that only restates its headline with no new information.
+- Forced wordplay that actually CONFUSES (not merely a weak pun).
+- Sentences that are genuinely robotic or unreadable.
 
-== JANGAN flag ==
-- ALL-CAPS hook, kata gaul ("doang", "nggak", "banget", "kalo", "bikin").
-- English finance term ("cashflow", "side hustle", "paylater").
-- Pilihan stylistic yang valid.
-- Hook yang punchy / contrarian / nyentil — itu bukan tolol.
+== WARN — style nit (NON-blocking, does not change the verdict) ==
+- Slightly odd subject that still reads fine.
+- Minor pleonasm.
+- A slightly long sentence.
+- A valid word choice that could be sharper.
 
-Output format — satu baris per temuan:
-FAIL slide <N> (<jenis>): "<kutipan>" — <alasan> — fix: <usul rewrite>
-WARN slide <N> (<jenis>): "<kutipan>" — <catatan>
+== DO NOT FLAG ==
+- ALL-CAPS hooks. Casual contractions ("don't", "you're", "gonna").
+- Finance terms ("cashflow", "side hustle", "paylater", "BNPL").
+- Valid stylistic choices.
+- A punchy, contrarian or provocative hook — that is not bad writing, that is the job.
 
-Akhiri output dengan SATU baris terakhir, persis salah satu:
+Output format — one line per finding:
+FAIL slide <N> (<type>): "<quote>" — <reason> — fix: <suggested rewrite>
+WARN slide <N> (<type>): "<quote>" — <note>
+
+End your output with ONE final line, exactly one of:
 VERDICT: PASS
 VERDICT: FAIL
 
-Aturan verdict:
-- VERDICT: FAIL HANYA kalau ada >= 1 FAIL grave.
+Verdict rules:
+- VERDICT: FAIL ONLY if there is >= 1 grave FAIL.
 - WARN-only (no FAIL) -> VERDICT: PASS.
-- Bersih -> VERDICT: PASS.
-
-Jangan over-flag. Galak HANYA ke tolol asli. Plan yang oke harus lolos.`;
+- Clean -> VERDICT: PASS.
+`;
 
 async function main() {
   const plan = await fs.readFile(PLAN_PATH, "utf8");
@@ -114,6 +117,16 @@ async function main() {
   }
 
   for (const f of fails) console.log(f);
+
+  // If the model said FAIL but formatted its findings some other way (a leading "- ", bold, a
+  // different verb), `fails` is EMPTY — and an empty FAIL report is handed to the fixer, which is
+  // then asked to "fix only the flagged slides" with nothing flagged. It loops and then throws.
+  // A FAIL with no parsed lines means OUR PARSER missed them, not that there is nothing wrong:
+  // dump everything so the fixer (and the human) can actually see it.
+  if (verdict === "FAIL" && fails.length === 0) {
+    console.log("(critic said FAIL but no line matched the expected format — full output follows)");
+    console.log(buf.trim());
+  }
 
   if (code !== 0 && !verdict) {
     // codex itself failed (rate-limit / dead account / timeout).

@@ -2,36 +2,30 @@
 /**
  * Regenerate ONE carousel after a manual QC fix.
  *
- * Use this when you have downloaded a finished carousel, looked at it, and a
+ * Use this when you have looked at a finished carousel and a
  * slide is wrong — bad image, garbled text, or copy that needs editing.
  *
  * Flow:
  *   1. (optional) edit plan.json — fix the HEADLINE / BODY text in a slide's
  *      "brief". This is how you correct wording.
  *   2. run regen.js — it re-renders the slide(s) from plan.json, finalises,
- *      and (unless --no-upload) re-uploads to GCS, overwriting the old folder.
+ *      in place, overwriting only the slides you named.
  *
  * Usage:
- *   node regen.js <content-id>            download from GCS, regen, re-upload
+ *   node regen.js <dir>                   re-plan + re-render every slide
+ *   node regen.js <dir> --slide 3,closing re-render only those
  *   node regen.js <path/to/carousel-dir>  use a local folder (must hold plan.json)
  * Options:
  *   --slide <sel>       regenerate ONLY this slide — a number (3), a kind
  *                       (cover/closing), or a name (03-statement). Repeat the
  *                       flag or comma-separate for several. Omit = whole carousel.
- *   --account <email>   pin a codex account from the pool
- *   --bucket <name>     GCS bucket (default: $GCS_BUCKET or ibils-carousel-content)
- *   --no-upload         regenerate fully LOCALLY, never touch GCS
  *
- * $GCS_KEY (service-account key) is needed only when uploading.
  */
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, execFile } from "node:child_process";
-import { promisify } from "node:util";
 
-const execFileP = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 function arg(flag, def) {
@@ -42,15 +36,10 @@ function arg(flag, def) {
 const TARGET = process.argv[2];
 if (!TARGET || TARGET.startsWith("--")) {
   console.error(
-    "usage: node regen.js <content-id | carousel-dir> [--slide <N>] " +
-      "[--account <email>] [--bucket <name>] [--no-upload]"
+    "usage: node regen.js <carousel-dir> [--slide <sel>]"
   );
   process.exit(1);
 }
-const ACCOUNT = arg("--account", "");
-const BUCKET = arg("--bucket", process.env.GCS_BUCKET || "ibils-carousel-content");
-// --no-upload: regenerate fully LOCALLY, do not touch Google Cloud Storage.
-const NO_UPLOAD = process.argv.includes("--no-upload");
 // --slide <sel>: regenerate ONLY the selected slide(s). Comma-separated or the
 // flag repeated. Empty = whole carousel.
 const SLIDE_SEL = (() => {
@@ -85,21 +74,16 @@ function run(file, args) {
 
 async function main() {
   let dir;
-  let contentId;
-  if (await isDir(TARGET)) {
-    dir = path.resolve(TARGET);
-    contentId = path.basename(dir.replace(/\/+$/, ""));
-  } else {
-    // a GCS content-id — download the folder first
-    contentId = TARGET.replace(/\/+$/, "");
-    dir = path.join(os.tmpdir(), `regen-${contentId}`);
-    await fs.rm(dir, { recursive: true, force: true });
-    await fs.mkdir(path.join(dir, "slides"), { recursive: true });
-    console.log(`downloading gs://${BUCKET}/${contentId} ...`);
-    await execFileP("gsutil", [
-      "-m", "cp", "-r", `gs://${BUCKET}/${contentId}/*`, dir
-    ], { env: process.env });
+  // Carousels live on disk. regen takes the carousel's DIRECTORY.
+  // (It used to also accept a Google Cloud Storage content-id and download it. Storage is gone.)
+  if (!(await isDir(TARGET))) {
+    console.error(`not a directory: ${TARGET}`);
+    console.error("usage: node regen.js <carousel-dir> [--slide <sel>]");
+    console.error("  <sel>: a number (3), a kind (cover|closing), or a name (03-statement).");
+    console.error("         comma-separated for several.");
+    process.exit(1);
   }
+  dir = path.resolve(TARGET);
 
   const planPath = path.join(dir, "plan.json");
   let plan;
@@ -151,20 +135,13 @@ async function main() {
   }
 
   const genArgs = [planPath, slidesDir];
-  if (ACCOUNT) genArgs.push("--account", ACCOUNT);
   await run("gen-carousel.js", genArgs);
   console.log("finalising ...");
   const finArgs = [slidesDir];
   if (targetNames) finArgs.push("--only", targetNames.join(","));
   await run("finalize.js", finArgs);
-  if (NO_UPLOAD) {
-    console.log(`\nDONE — regenerated locally: ${dir}`);
-    console.log("(not uploaded — open the slides/ folder to review)");
-    return;
-  }
-  console.log(`uploading to gs://${BUCKET}/${contentId} ...`);
-  await run("gcs-upload.js", [dir, contentId]);
-  console.log(`\nDONE — regenerated gs://${BUCKET}/${contentId}/`);
+  console.log(`\nDONE — regenerated in place: ${dir}`);
+  console.log("open slides/ to review.");
 }
 
 main().catch((e) => {

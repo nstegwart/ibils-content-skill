@@ -5,7 +5,7 @@
  * For every *.png in the given directory:
  *   1. PAD (never crop) to a 4:5 box using the slide's own edge colour, then
  *      resize to EXACTLY 1080x1350 — uniform carousel size, zero content lost.
- *   2. Composite the fixed Ibils glass-card logo into the top-RIGHT corner —
+ *   2. Composite the real Ibils App Store icon into the top-RIGHT corner —
  *      pixel-identical branding on every slide.
  *
  * Requires ImageMagick — works with v7 (`magick`) or v6 (`convert`/`identify`).
@@ -23,7 +23,7 @@ import { promisify } from "node:util";
 const execFileP = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-// ImageMagick 7 has `magick`; v6 (e.g. on the burst server) has `convert` +
+// ImageMagick 7 has `magick`; v6 has `convert` +
 // `identify`. Resolve once so finalize runs on either.
 let HAS_MAGICK = false;
 try {
@@ -45,6 +45,15 @@ function identify(args) {
     : execFileP("identify", args);
 }
 const LOGO_CARD = path.join(HERE, "..", "assets", "ibils-logo-card.png");
+
+// ON-SLIDE render sizes. The assets are intentionally HI-RES (a big source downsamples crisp; an
+// upscaled small one goes soft). So every composite below states the size it wants EXPLICITLY and
+// never inherits it from the asset file. Bumping an asset's resolution must NOT change the layout.
+const LOGO_PX = 128;     // App Store icon, top-right
+const PHONE_H = 778;     // closing-slide device mockup, height on a 1080x1350 slide.
+                         // 778 = the OLD asset's exact height, so the new hi-res source lands at
+                         // the same on-slide size the shipped decks already use.
+const BADGES_W = 480;    // store badge strip, width
 const STORE_BADGES = path.join(HERE, "..", "assets", "store-badges.png");
 const CLOSING_PHONE = path.join(HERE, "..", "assets", "closing-phone.png");
 
@@ -82,9 +91,12 @@ async function finalizeOne(file) {
     "-resize", "1080x1350!",
     file
   ]);
-  // glass-card logo — always top-RIGHT corner, small
+  // App Store icon — always top-RIGHT corner, small.
+  // The SOURCE asset is deliberately hi-res (512px) so it downsamples crisp. The ON-SLIDE size is
+  // therefore stated EXPLICITLY here and must never be inherited from the asset's own dimensions —
+  // swapping in a bigger source once silently pasted a 512px block onto a 1080px slide.
   await convert([
-    file, LOGO_CARD,
+    file, "(", LOGO_CARD, "-resize", `${LOGO_PX}x${LOGO_PX}`, ")",
     "-gravity", "northeast", "-geometry", "+46+46", "-composite",
     file
   ]);
@@ -135,14 +147,14 @@ async function main() {
           await fs.rm(patchTile, { force: true }).catch(() => {});
         }
         await convert([
-          file, CLOSING_PHONE,
+          file, "(", CLOSING_PHONE, "-resize", `x${PHONE_H}`, ")",
           "-gravity", "center", "-geometry", "+150+70", "-composite",
           file
         ]);
         // store badges — small, composited from the hi-res official asset
         // (downscaled = crisp), sitting on the plain bg, no card behind.
         await convert([
-          file, "(", STORE_BADGES, "-resize", "480x", ")",
+          file, "(", STORE_BADGES, "-resize", `${BADGES_W}x`, ")",
           "-gravity", "south", "-geometry", "+100+95", "-composite",
           file
         ]);
@@ -156,6 +168,9 @@ async function main() {
     }
   }
   console.log(`finalised ${ok}/${entries.length} -> ${DIR}`);
+  // A slide that failed to finalise is a RAW slide: wrong size, no logo, no phone, no badges.
+  // Exiting 0 here made run-carousel print "CAROUSEL DONE" over a broken deck.
+  if (ok < entries.length) process.exit(1);
 }
 
 main().catch((e) => {

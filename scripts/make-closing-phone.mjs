@@ -1,0 +1,155 @@
+#!/usr/bin/env node
+/**
+ * Build assets/closing-phone.png — the device mockup used on the carousel closing slide and in
+ * the video end card.
+ *
+ * Built PROCEDURALLY, on purpose. A generated phone hallucinates the logo, warps the wordmark and
+ * bends the bezel. Here the screen is the REAL App Store icon artwork, so the mark is pixel-exact
+ * and the edges stay straight.
+ *
+ *   node scripts/make-closing-phone.mjs
+ */
+import fs from "node:fs";
+import path from "node:path";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const OUT = path.join(HERE, "..", "assets", "closing-phone.png");
+
+// The single source of truth for the brand mark. Same file the App Store ships.
+const APP_ICON = "/Users/user/Project/ibils-orchestrator/ibils-budget-tracker/react-native/assets/icon.png";
+
+// device geometry (2x the old asset, so it downsamples crisp instead of upscaling soft)
+const W = 820, H = 1660;          // body
+const PAD = 200;                  // room for the shadow
+const BEZEL = 26;                 // black frame around the glass
+const R_BODY = 118;               // body corner radius
+const R_SCREEN = R_BODY - BEZEL + 4;
+
+// screen gradient, sampled from the real app icon
+const TEAL_TOP = "#4C8B84";
+const TEAL_BOT = "#2F6660";
+
+const sh = (args) => new Promise((res, rej) => {
+  const c = spawn("magick", args, { stdio: ["ignore", "ignore", "pipe"] });
+  let e = ""; c.stderr.on("data", (d) => (e += d));
+  c.on("close", (code) => (code === 0 ? res() : rej(new Error(e || `magick ${code}`))));
+});
+
+const CW = W + PAD * 2, CH = H + PAD * 2;
+const X = PAD, Y = PAD;
+const SX = X + BEZEL, SY = Y + BEZEL;
+const SW = W - BEZEL * 2, SH_ = H - BEZEL * 2;
+
+async function main() {
+  // The brand mark is read from the real app repo. If that tree isn't here, say so — magick's
+  // failure for a missing input is cryptic and would look like an ImageMagick bug.
+  const icon = process.env.APP_ICON || APP_ICON;
+  if (!fs.existsSync(icon)) {
+    throw new Error(`app icon not found: ${icon}\n` +
+      `Set APP_ICON=/path/to/icon.png (the 1024x1024 App Store icon).`);
+  }
+  const T = process.env.TMPDIR || "/tmp";
+  const p = (n) => path.join(T, `cp_${n}.png`);
+
+  // 1. screen: vertical teal gradient, rounded
+  await sh(["-size", `${SW}x${SH_}`, `gradient:${TEAL_TOP}-${TEAL_BOT}`, p("grad")]);
+  await sh(["-size", `${SW}x${SH_}`, "xc:none", "-draw",
+    `roundrectangle 0,0,${SW - 1},${SH_ - 1},${R_SCREEN},${R_SCREEN}`, "-alpha", "extract", p("smask")]);
+  await sh([p("grad"), p("smask"), "-alpha", "off", "-compose", "CopyOpacity", "-composite", p("screen")]);
+
+  // 2. the mark, lifted straight off the real app icon (white-on-teal -> keep only the white)
+  //    threshold the icon so we get the mark alone, then tint it pure white.
+  const MARK = Math.round(SW * 0.42);
+  await sh([icon, "-colorspace", "gray", "-threshold", "70%",
+    "-transparent", "black", "-fill", "white", "-colorize", "100",
+    "-trim", "+repage", "-resize", `${MARK}x`, p("mark")]);
+
+  // 3. wordmark
+  //    ImageMagick here has ZERO registered fonts (`magick -list font` -> 0), so a font NAME like
+  //    "Helvetica-Bold" never resolves. Pass an absolute font FILE and fail loudly if none exist.
+  const FS = Math.round(SW * 0.13);
+  const FONTS = [
+    "/System/Library/Fonts/HelveticaNeue.ttc",
+    "/System/Library/Fonts/Helvetica.ttc",
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    "/System/Library/Fonts/Supplemental/Arial.ttf",
+  ];
+  const font = FONTS.find((f) => fs.existsSync(f));
+  if (!font) throw new Error(`no usable font file found; tried:\n  ${FONTS.join("\n  ")}`);
+  await sh(["-background", "none", "-fill", "white", "-font", font,
+    "-pointsize", String(FS), "label:Ibils", "-trim", "+repage", p("word")]);
+
+  // 4. compose the screen contents, optically centred (slightly above true centre — a dead-centre
+  //    lockup always reads as sinking)
+  await sh([p("screen"),
+    p("mark"), "-gravity", "center", "-geometry", `+0-${Math.round(SH_ * 0.06)}`, "-composite",
+    p("word"), "-gravity", "center", "-geometry", `+0+${Math.round(SH_ * 0.11)}`, "-composite",
+    p("screen2")]);
+
+  // 5. glass: a WHISPER of light falling from the top-left.
+  //    A rotated linear gradient gives a hard-edged diagonal wedge that reads as a rendering
+  //    artefact, not glass. Blur it into nothing and keep it under 7% — the eye should register
+  //    "this surface catches light" without ever locating the highlight.
+  await sh(["-size", `${SW}x${SH_}`, "gradient:white-none", "-rotate", "-20",
+    "-resize", `${SW}x${SH_}!`,
+    "-blur", `0x${Math.round(SW * 0.16)}`,
+    "-alpha", "on", "-channel", "A", "-evaluate", "multiply", "0.07", "+channel", p("sheen")]);
+  await sh([p("screen2"), p("sheen"), "-compose", "over", "-composite",
+    p("smask"), "-alpha", "off", "-compose", "CopyOpacity", "-composite", p("screen3")]);
+
+  // 6. body: near-black with a lit metal edge (top-left catches light, bottom-right falls off)
+  await sh(["-size", `${W}x${H}`, "gradient:#3A3F42-#0B0D0E", "-rotate", "0", p("bodygrad")]);
+  await sh(["-size", `${W}x${H}`, "xc:none", "-draw",
+    `roundrectangle 0,0,${W - 1},${H - 1},${R_BODY},${R_BODY}`, "-alpha", "extract", p("bmask")]);
+  await sh([p("bodygrad"), p("bmask"), "-alpha", "off", "-compose", "CopyOpacity", "-composite", p("body")]);
+
+  // inner black frame so the glass sits INSIDE the metal, not on top of it
+  await sh([p("body"), "-fill", "#0A0C0D", "-draw",
+    `roundrectangle ${BEZEL - 6},${BEZEL - 6},${W - BEZEL + 5},${H - BEZEL + 5},${R_SCREEN + 6},${R_SCREEN + 6}`,
+    p("body2")]);
+
+  // 7. shadow: soft, offset down — the phone floats, it does not sit on a shelf.
+  //
+  //    NEVER touch -colorspace gray here. A grayscale image dragged into the final composite makes
+  //    ImageMagick adopt a grayscale working colourspace for the WHOLE stack, and every layer put on
+  //    top of it — including the teal screen — comes out silently DESATURATED. It shipped grey once.
+  //    So: build the shadow as a genuinely BLACK sRGB plate whose ALPHA is the blurred body mask.
+  await sh(["-size", `${W}x${H}`, "xc:black", "-colorspace", "sRGB", "-alpha", "set",
+    "(", p("bmask"), "-blur", `0x${Math.round(W * 0.055)}`, ")",
+    "-compose", "CopyOpacity", "-composite",
+    "-channel", "A", "-evaluate", "multiply", "0.45", "+channel", p("shplate")]);
+
+  // 8. assemble — base canvas is explicitly sRGB
+  await sh(["-size", `${CW}x${CH}`, "xc:none", "-colorspace", "sRGB",
+    p("shplate"), "-geometry", `+${X}+${Y + Math.round(H * 0.028)}`, "-composite",
+    p("body2"), "-geometry", `+${X}+${Y}`, "-composite",
+    p("screen3"), "-geometry", `+${SX}+${SY}`, "-composite",
+    "-colorspace", "sRGB", p("phone")]);
+
+  // 9. dynamic island — drawn LAST, on top of the glass
+  const IW = Math.round(SW * 0.30), IH = Math.round(IW * 0.30);
+  const IX = SX + Math.round((SW - IW) / 2), IY = SY + Math.round(SH_ * 0.022);
+  await sh([p("phone"), "-fill", "#08090A", "-draw",
+    `roundrectangle ${IX},${IY},${IX + IW},${IY + IH},${IH / 2},${IH / 2}`,
+    "-trim", "+repage", OUT]);
+
+  const { spawnSync } = await import("node:child_process");
+  const dim = spawnSync("magick", [OUT, "-format", "%wx%h", "info:"], { encoding: "utf8" }).stdout;
+
+  // ASSERT the screen is actually TEAL. A grey base colourspace silently desaturates the whole
+  // composite, and the failure is invisible unless you look. Measure it.
+  const px = spawnSync("magick", [OUT, "-crop", "40%x30%+30%+35%", "+repage",
+    "-alpha", "remove", "-resize", "1x1", "-format", "%[fx:r*255],%[fx:g*255],%[fx:b*255]", "info:"],
+    { encoding: "utf8" }).stdout;
+  const [r, g, b] = px.split(",").map(Number);
+  const sat = (Math.max(r, g, b) - Math.min(r, g, b));
+  if (!(g > r + 12 && sat > 20)) {
+    throw new Error(`screen is not teal — got rgb(${r|0},${g|0},${b|0}). ` +
+      `A grayscale base canvas desaturates every composite onto it.`);
+  }
+  console.log(`closing-phone: ${dim.trim()}  screen rgb(${r|0},${g|0},${b|0}) TEAL ok -> ${OUT}`);
+}
+
+main().catch((e) => { console.error("ERROR", e.message); process.exit(1); });

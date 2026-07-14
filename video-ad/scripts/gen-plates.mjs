@@ -10,7 +10,7 @@ const SKILL = path.resolve(new URL(".", import.meta.url).pathname, "../..");
 const OUT = process.env.OUT_DIR || path.resolve(process.cwd(), "ad");
 const REFS = ["hero", "explain", "invite", "alert"].map((p) => path.join(SKILL, "assets", `himel-pose-${p}.png`));
 
-const IDENTITY = `FOUR REFERENCE IMAGES of 'Himel' attached. Lock his identity: a small child-king, soft side-swept hair with BANGS OVER ONE EYE, a THIN POINTED LINE-CROWN (delicate, NOT a chunky jewelled crown), a scarf, a long tunic, PUFFY TROUSERS clearly visible, TALL CUFFED BOOTS clearly visible, and a CAPE that always reads as a cape (never a gown or dress). Clean black-and-white manga ink, gentle young boy, round child face.
+const IDENTITY = `FOUR REFERENCE IMAGES of 'Himel' attached. Lock his identity: a small child-king, soft side-swept hair with BANGS OVER ONE EYE, a POINTED CROWN (a solid band with five ball-tipped points and small dot jewels), a scarf, a long tunic, PUFFY TROUSERS clearly visible, TALL CUFFED BOOTS clearly visible, and a CAPE that always reads as a cape (never a gown or dress). Clean black-and-white manga ink, gentle young boy, round child face.
 BANNED: NO scepter, NO orb, NO staff, NO fantasy prop.`;
 
 const ANTIBAIT = `!!! ANTI-TEXT RULE — READ FIRST !!!

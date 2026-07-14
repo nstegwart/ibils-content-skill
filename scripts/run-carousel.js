@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * Produce ONE complete IBILS carousel end-to-end and upload it to GCS.
+ * Produce ONE complete IBILS carousel end-to-end, locally.
  *
  *   topic -> (news fetch) -> codex writes plan.json -> lint gate ->
- *   gen-carousel (per-slide) -> finalize -> gcs-upload
+ *   plan -> gen-carousel (1 codex session per slide, parallel) -> finalize
  *
- * This is the unit a burst session runs. burst-daemon.js launches many of
- * these in parallel.
+ * Every slide gets its own codex session and they all run in parallel, so one carousel is one
+ * command — there is no pool, no rotation, no daemon.
  *
  * Usage:
- *   node run-carousel.js --mode news --topic "rupiah melemah" \
+ *   node run-carousel.js --mode news --topic "rupiah slides against the dollar" \
  *        --out <dir> [--count <4-12>]
  *
- * Output: a finished carousel in <dir> (plan.json + slides/), uploaded to
- * gs://<bucket>/<content-id>/. Prints the content-id on success.
+ * Output: a finished carousel in <dir> (plan.json + slides/), kept on disk.
+ * Prints the output directory on success.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -32,8 +32,6 @@ function arg(flag, def) {
 const MODE = arg("--mode", "news");
 const TOPIC = arg("--topic", "");
 const OUT = path.resolve(arg("--out", `./carousel-${MODE}-${Date.now()}`));
-// --no-upload: run fully LOCALLY — skip the GCS upload and keep the folder.
-const NO_UPLOAD = process.argv.includes("--no-upload");
 // content slides 5-7 (carousel = count + cover + closing = 7-9 slides).
 // Real human carousels run 6-9 slides total; a 14-slide deck on one narrow
 // topic turns repetitive and reads as AI padding.
@@ -98,11 +96,14 @@ async function writePlan(articles) {
     "IMITATE example-carousels.md. Those are real human carousels — your hooks,",
     "voice, and rhythm MUST match their punch. Every headline is a command, a",
     "warning, a myth it kills, a shock number, or a fear question — NEVER a flat",
-    "descriptive label. Spoken Bahasa Indonesia, address the reader as 'kamu',",
-    "casual (nggak/kalo/doang), a few ALL-CAPS punch words, confrontational,",
-    "real emotional stakes. The carousel is ONE argument built slide by slide.",
-    "CLEAR THE VALUE BAR in content-rules.md: relatable to an ordinary",
-    "Indonesian's money life, teach ONE real lesson with its WHY, clear takeaway.",
+    "descriptive label. Written in ENGLISH — spoken, second person 'you',",
+    "contractions, a few ALL-CAPS punch words, confrontational, real emotional",
+    "stakes. The carousel is ONE argument built slide by slide.",
+    "CLEAR THE VALUE BAR in content-rules.md: relatable to an ordinary person's",
+    "money life, teach ONE real lesson with its WHY, clear takeaway.",
+    "NEVER write like an AI: no balanced triplets ('faster, easier, and more",
+    "accurate'), no 'unlock/seamless/effortlessly/game-changer', no empty payoffs",
+    "('peace of mind', 'financial freedom'), no 'In today's fast-paced world'.",
     "For education mode, anchor the lesson in a real, well-known finance-book",
     "idea (named plainly).",
     "Every body adds NEW concrete info (action / number / mechanism) — never",
@@ -114,7 +115,14 @@ async function writePlan(articles) {
     `Use kicker exactly: "${KICKERS[MODE] || "Ibils News"}".`,
     "Each slide: { kind, brief, pose }. brief carries the verbatim copy.",
     "pose = Himel's context-matched action; props presented facing the viewer.",
-    "closing slide: { kind:'closing', brief:'HEADLINE: \"<short CTA>\"', pose:'...' }.",
+    // The linter parses HEADLINE:/BODY: out of `brief` with a regex. If the shape is not stated
+    // HERE, it is only obeyed because the model happened to follow a referenced doc — and when it
+    // does not, every slide trips "missing HEADLINE" and the run dies in the gate loop.
+    "BRIEF SHAPE — exact, mandatory, both fields on content slides:",
+    "  content: brief: 'HEADLINE: \"<hook>\"  BODY: \"<new concrete info>\"'",
+    "  cover:   brief: 'HEADLINE: \"<hook>\"'",
+    "  closing: brief: 'HEADLINE: \"<short CTA>\"'",
+    "A content slide with no BODY is rejected by the linter.",
     `Write ONLY the JSON to the file: ${planPath}`,
     "Shape: {mode,topic,kicker,sources:[],slides:[...]}. Reply DONE when written."
   ].filter(Boolean).join("\n");
@@ -242,28 +250,18 @@ async function main() {
   ]);
   await step("finalize", "finalize.js", [path.join(OUT, "slides")]);
 
-  // 4. upload — skipped with --no-upload (local run: carousel stays in OUT)
-  if (NO_UPLOAD) {
-    console.log(`CAROUSEL DONE (local): ${OUT}`);
-    return;
-  }
-  const contentId =
-    `${new Date().toISOString().slice(0, 10)}-${slug(plan.topic || TOPIC || MODE)}-${nanoid()}`;
-  // UPLOAD_TARGET=drive -> Google Drive (rclone); else Google Cloud Storage.
-  const uploadScript =
-    process.env.UPLOAD_TARGET === "drive" ? "drive-upload.js" : "gcs-upload.js";
-  await step("upload", uploadScript, [OUT, contentId]);
-  console.log(`CAROUSEL DONE: ${contentId}`);
+  // Done. The carousel STAYS on disk.
+  //
+  // There used to be an upload step here (Google Cloud Storage / Drive) and, right after it, a
+  // `fs.rm(OUT, {recursive:true})` that deleted the run's own output — correct only because the
+  // work had just been shipped to a bucket. With the upload gone, that cleanup would mean
+  // "generate a carousel, then throw it away". It is deliberately NOT here. Runs are local and kept.
+  console.log(`\nCAROUSEL DONE: ${OUT}`);
 }
 
-main()
-  .then(async () => {
-    // a local run keeps its folder; an uploaded one is dropped so the burst
-    // disk never fills up with finished work.
-    if (!NO_UPLOAD) await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
-  })
-  .catch(async (e) => {
-    console.error("ERROR", e.message);
-    if (!NO_UPLOAD) await fs.rm(OUT, { recursive: true, force: true }).catch(() => {});
-    process.exit(1);
-  });
+main().catch((e) => {
+  console.error("ERROR", e.message);
+  // Do NOT delete OUT on failure either — a half-finished carousel is exactly what you want to
+  // look at when diagnosing why it failed.
+  process.exit(1);
+});

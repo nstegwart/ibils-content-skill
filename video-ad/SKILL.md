@@ -124,7 +124,7 @@ transition**, and no crossfade hides it.
 **Find ONE cue that already performs dark → light.** Then the composer's transition IS the
 transition, and it is smooth by construction — there is no seam to smooth.
 
-`scripts/video/find_arc.py` scans every 30s window of a candidate library and scores its *internal*
+`video-ad/scripts/find_arc.py` scans every 30s window of a candidate library and scores its *internal*
 arc (brightness lift, energy rise, and how CONCENTRATED the turn is at the target mark).
 
 ### Tempo lock is a hard requirement
@@ -229,9 +229,10 @@ Shared with the carousel — see `../references/styles.md`.
 Amber `#F2A93B` = **one** point of meaning per frame. Never decoration.
 
 **Himel.** Identity locked by the 4 refs in `../assets/himel-pose-*.png`: small child-king, bangs over
-one eye, **thin pointed line-crown** (not chunky/jewelled), scarf, long tunic, puffy trousers, tall
+one eye, **a pointed crown — a solid band with five ball-tipped points and small dot jewels on the band**, scarf, long tunic, puffy trousers, tall
 cuffed boots, a cape that always reads as a **cape** (never a gown).
-**BANNED: scepter, orb, staff, any fantasy prop.** The refs show one; it is retired.
+**BANNED: scepter, orb, staff, any fantasy prop.** The refs are scepter-free — both hands are
+empty and acting. Keep them that way.
 
 **End card.** Use the real app: composite `../assets/closing-phone.png` (the Ibils splash) into a void
 the plate deliberately reserves for it. Have codex compose the scene with the centre-right left

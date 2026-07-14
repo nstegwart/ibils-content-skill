@@ -1,0 +1,7 @@
+{
+  "name": "ibils-content-skill",
+  "private": true,
+  "type": "module",
+  "description": "Ibils content skills — carousel + cinematic video ad. Scripts are ESM and use top-level await; \"type\": \"module\" is required or Node <22 throws 'Cannot use import statement outside a module'.",
+  "engines": { "node": ">=18" }
+}

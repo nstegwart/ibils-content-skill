@@ -21,73 +21,79 @@ if (!PLAN_PATH) {
   process.exit(1);
 }
 
-// Indonesian function words — stripped before measuring real content.
+// English function words — stripped before measuring real content.
 const STOPWORDS = new Set([
-  "yang", "dan", "di", "ke", "dari", "untuk", "itu", "ini", "kamu", "atau",
-  "jadi", "biar", "supaya", "dengan", "pada", "ada", "akan", "tidak", "tak",
-  "juga", "saat", "agar", "bisa", "sudah", "lebih", "masih", "apa", "pun",
-  "kalau", "tapi", "karena", "sebab", "lalu", "saja", "aja", "nya", "mu", "ku",
-  "para", "se", "per", "oleh", "dalam", "antara", "kita", "kami", "mereka"
+  "the", "a", "an", "and", "or", "but", "so", "to", "of", "in", "on", "at", "by",
+  "for", "with", "from", "as", "is", "are", "was", "were", "be", "been", "being",
+  "it", "its", "this", "that", "these", "those", "you", "your", "yours", "we",
+  "our", "they", "their", "he", "she", "his", "her", "i", "my", "me",
+  "do", "does", "did", "has", "have", "had", "will", "would", "can", "could",
+  "just", "not", "no", "if", "then", "than", "there", "here", "up", "out", "about"
 ]);
 
-// Empty payoff / generic phrases that carry no information.
-// Empty payoff phrases. Kept specific — a bare "jadi lebih" is NOT banned
-// because "jadi lebih mahal / berat" is concrete and legitimate.
+// EMPTY PAYOFFS — sentences that sound like a benefit but carry zero information.
+// These are the phrases a language model reaches for when it has nothing to say.
 const BANNED = [
-  "lebih tenang", "lebih bijak", "lebih teratur", "lebih siap",
-  "hidup lebih baik", "biar tenang", "supaya tenang", "biar teratur",
-  "hal penting", "hal-hal penting", "langkah kecil", "catatan kecil",
-  "rasakan bedanya", "lebih terkontrol"
+  "peace of mind", "feel the difference", "live better", "stay on top of things",
+  "smarter money habits", "take control of your finances", "financial freedom",
+  "make every rupiah count", "money made simple", "your money, your way",
+  "small steps", "little wins", "life-changing", "the things that matter"
 ];
 
-// Awkward shorthand — "muda" only modifies a person, never a thing. "gaji
-// muda" is nonsense (salaries don't have an age); write "gaji anak muda" /
-// "gaji pertama" / "gaji UMR".
+// MARKETING FLUFF + LLM THROAT-CLEARING — the loudest "written by an AI" tells in English.
+// A triplet of balanced clauses ("faster, easier, and more accurate") is the single strongest
+// one and is caught structurally below, not by string match.
 const BANNED_AWKWARD = [
-  "gaji muda", "skill muda", "pendapatan muda", "kerja muda", "upah muda",
-  "uang muda", "karier muda"
+  "unlock", "seamless", "seamlessly", "game-changer", "game changer", "supercharge",
+  "effortlessly", "effortless", "revolutionary", "revolutionize", "all-in-one",
+  "best-in-class", "cutting-edge", "leverage", "empower", "elevate your",
+  "in today's fast-paced world", "in today's world", "let's dive in", "let's face it",
+  "it's no secret that", "the truth is", "here's the thing", "look no further",
+  "say goodbye to", "welcome to the future"
 ];
+
 
 // Hedge words — soften a claim that should land direct. Forecast-attribution
 // is the usual culprit ("BI diperkirakan menaikkan ..."). Use a direct claim
 // with the source name instead ("Kumparan: BI bakal naikin suku bunga").
+// HEDGES — a slide that hedges is a slide with no claim.
 const BANNED_HEDGE = [
-  "diperkirakan", "diprediksi", "diramalkan", "diduga",
-  "disebut", "katanya", "kabarnya", "konon"
+  "reportedly", "allegedly", "apparently", "supposedly", "arguably",
+  "some say", "it is said", "experts believe", "rumour has it", "rumor has it",
+  "might just", "could potentially", "may well"
 ];
 
 // Teaser headlines that hide the point instead of stating it.
 const TEASER = [
-  "ini rahasia", "rahasianya", "begini cara", "begini langkah", "ini dia",
-  "yang perlu kamu tahu", "yang harus kamu tahu", "wajib tahu", "simak",
-  "ini caranya", "ternyata begini"
+  "the secret to", "here's the secret", "here's how", "here's what", "this is how",
+  "what you need to know", "what nobody tells you", "you won't believe",
+  "the one thing", "read on", "keep reading", "find out why", "turns out"
 ];
 
 // Concrete instruction verbs — a content body should usually tell you to DO
 // something. Matched loosely (prefix/suffix tolerant).
 const ACTION_ROOTS = [
-  "catat", "tulis", "buka", "cek", "periksa", "sisihkan", "pindah", "pilih",
-  "banding", "tandai", "henti", "stop", "jumlah", "hitung", "susun", "tunda",
-  "kurang", "beli", "masak", "simpan", "bagi", "pisah", "atur", "pasang",
-  "lacak", "batasi", "kumpul", "alih", "matikan", "hapus", "ganti", "mulai",
-  "lakukan", "sisakan", "bayar", "rapikan"
+  "log", "write", "open", "check", "review", "set aside", "move", "pick",
+  "compare", "flag", "stop", "count", "add", "split", "delay", "cut",
+  "buy", "cook", "save", "share", "separate", "sort", "install",
+  "track", "cap", "collect", "switch", "turn off", "delete", "swap", "start",
+  "pay", "tidy", "cancel", "unsubscribe", "screenshot", "forward", "send"
 ];
 
 // Concrete number / time signals.
-const NUMBER_RE = /\d|\brp\b|persen|%|sebulan|seminggu|sehari|harian|bulanan|mingguan|tiap hari|tiap minggu|tiap bulan|akhir pekan|gajian/i;
+const NUMBER_RE = /\d|\brp\b|percent|%|a month|a week|a day|daily|weekly|monthly|every day|every week|every month|weekend|payday|per month|per week/i;
 // Cause / mechanism / purpose connectors — mark an explanatory concrete body.
-const MECHANISM = ["karena", "sebab", "saat", "ketika", "sehingga", "akibat", "supaya", "agar"];
+const MECHANISM = ["because", "since", "when", "so that", "which means", "that's why", "as a result", "after"];
 
 function field(brief, name) {
   const m = String(brief || "").match(new RegExp(`${name}:\\s*"([^"]*)"`, "i"));
   return m ? m[1].trim() : "";
 }
 
-// crude Indonesian stem — drop common affixes so dibuka~buka, menarik~tarik.
+// crude English stem — drop common inflections so "logging"~"log", "tracked"~"track".
 function stem(w) {
   let s = w.toLowerCase();
-  s = s.replace(/^(memper|menge|meng|meny|mem|men|me|peng|pen|pem|ber|ter|di|ke|se)/, "");
-  s = s.replace(/(kannya|kanlah|annya|kan|nya|lah|an|i)$/, "");
+  s = s.replace(/(ing|edly|ed|ies|es|s|ly)$/, "");
   return s.length >= 3 ? s : w.toLowerCase();
 }
 
@@ -122,11 +128,31 @@ function lintSlide(slide, idx) {
   for (const p of BANNED) {
     if (hay.includes(p)) fails.push(`banned vague phrase: "${p}"`);
   }
+  // THE BALANCED TRIPLET — the strongest "written by an AI" tell in English, and the one no
+  // string-match can catch: three parallel items in a row ("faster, easier, and more accurate";
+  // "track it, tag it, forget it"). A human writes two, or four, or an uneven list. A model writes
+  // three balanced ones almost every time. Detected structurally.
+  for (const sentence of hay.split(/[.!?\n]+/)) {
+    const parts = sentence.split(",").map((x) => x.trim()).filter(Boolean);
+    if (parts.length < 3) continue;
+    const tail = parts.slice(-3);
+    if (!/^(and|or)\b/i.test(tail[2])) continue;          // "..., and X" — the closing beat
+    // Measure only the LAST TWO items. The first item is usually welded to the sentence stem
+    // ("Ibils makes budgeting FASTER, easier, and more accurate"), so counting its words measures
+    // the sentence, not the item, and the triplet slips through. The parallelism lives in the tail.
+    const lens = tail.slice(1).map((x) => x.replace(/^(and|or)\s+/i, "").trim().split(/\s+/).length);
+    const spread = Math.max(...lens) - Math.min(...lens);
+    if (spread <= 1 && lens.every((n) => n <= 3)) {
+      fails.push(
+        `balanced triplet: "${sentence.trim()}" — three parallel clauses is the loudest ` +
+        `AI-written tell there is. Cut it to two, or make one of them uneven.`
+      );
+    }
+  }
   for (const p of BANNED_AWKWARD) {
     if (hay.includes(p)) {
       fails.push(
-        `awkward phrasing "${p}" — "muda" only modifies a person; write ` +
-          `"gaji anak muda" / "gaji pertama" / "gaji UMR" / "pekerja muda"`
+        `AI-tell "${p}" — marketing fluff or LLM throat-clearing. Say the actual thing instead.`
       );
     }
   }

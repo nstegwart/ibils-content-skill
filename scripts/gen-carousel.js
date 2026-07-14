@@ -19,7 +19,6 @@ const ASSETS = path.join(HERE, "..", "assets");
 const HIMEL_REFS = ["hero", "explain", "invite", "alert"].map((p) =>
   path.join(ASSETS, `himel-pose-${p}.png`)
 );
-const LOGO_REF = path.join(ASSETS, "ibils-icon.svg");
 
 const PLAN_PATH = process.argv[2];
 if (!PLAN_PATH || !process.argv[3]) {
@@ -42,7 +41,8 @@ const HARD_RULE = [
 const REFERENCE = [
   "FOUR REFERENCE IMAGES of the mascot 'Himel' are attached — the SAME",
   "character in four poses. Lock his identity EXACTLY: a small child-king,",
-  "soft side-swept hair with bangs over one eye, a thin pointed line-crown, a",
+  "soft side-swept hair with bangs over one eye, a pointed crown (a solid band with",
+    "five ball-tipped points and small dot jewels), a",
   "scarf, a long tunic, puffy trousers, tall cuffed boots, a long cape — clean",
   "BLACK-AND-WHITE manga ink. A gentle young manga BOY, round child face —",
   "NOT a tall teenager, NOT a slender bishounen, NOT a chibi. Redraw THIS exact",
@@ -76,7 +76,7 @@ const FORMAT = [
   "cut-off mascot or cropped prop means the slide is rejected.",
   "Compose edge-to-edge: the background fills the whole 1080x1350 with no",
   "inner border, frame, or empty margin band around the artwork.",
-  "All text is real typography, spelled EXACTLY, in Indonesian.",
+  "All text is real typography, spelled EXACTLY, in ENGLISH.",
   "No watermark, no signature, no extra text."
 ].join("\n");
 
@@ -224,6 +224,26 @@ function runCodex(slide, plan, total) {
       env: { ...process.env, NO_COLOR: "1" },
       stdio: ["pipe", "pipe", "pipe"]
     });
+
+    // *** DRAIN THE PIPES. THIS IS NOT OPTIONAL. ***
+    // We open stdout/stderr as pipes, so SOMETHING must read them. `codex exec` is verbose; once it
+    // has written ~64KB the kernel pipe buffer is full, codex blocks forever inside write(), and the
+    // only thing that ever happens is the SIGKILL below — 9 minutes later, reported as a mysterious
+    // "attempt failed", three times, on every slide at once. (This is exactly what happened when the
+    // account-pool removal deleted the old rate-limit sniffer, which had been the only reader.)
+    // Keep a TAIL of the output so a failure can say why it failed.
+    let buf = "";
+    const grab = (d) => { buf += d.toString(); if (buf.length > 60000) buf = buf.slice(-60000); };
+    child.stdout.on("data", grab);
+    child.stderr.on("data", grab);
+
+    // If `codex` is not on PATH, ChildProcess emits 'error'. With no listener, EventEmitter THROWS,
+    // the exception escapes the Promise, and every retry/soft-fail path below is bypassed.
+    child.on("error", (e) => {
+      clearTimeout(timer);
+      resolve({ ok: false, limited: false, why: `cannot spawn codex: ${e.message}` });
+    });
+
     const timer = setTimeout(() => child.kill("SIGKILL"), 9 * 60 * 1000);
     child.on("close", async () => {
       clearTimeout(timer);
@@ -233,7 +253,10 @@ function runCodex(slide, plan, total) {
       } catch {
         /* genuine failure */
       }
-      resolve({ ok });
+      // Surface WHY. A bare "failed" is what made the deadlock invisible for so long.
+      const limited = /usage limit|rate.?limit|try again (at|in)|429|quota/i.test(buf);
+      const why = ok ? "" : (limited ? "codex usage limit" : (buf.trim().split("\n").pop() || "no output"));
+      resolve({ ok, limited, why });
     });
     child.stdin.end(buildPrompt(slide, plan, total));
   });
@@ -279,13 +302,23 @@ async function main() {
     } catch {
       /* generate */
     }
+    // Retry with BACKOFF. Under the old account pool a failure meant "rotate to another account",
+    // which was an instant, real remedy. There is one account now, so the dominant failure is a
+    // usage limit — and hammering the same account three times in three seconds is not a remedy,
+    // it just burns the attempts. Wait, and wait longer if codex actually said "limit".
+    const BACKOFF = [30_000, 120_000, 300_000];
     for (let attempt = 1; attempt <= 3; attempt++) {
       const r = await runCodex(slide, plan, total);
       if (r.ok) {
         console.log(`${slide.name}: ok`);
         return true;
       }
-      console.log(`${slide.name}: attempt ${attempt} failed`);
+      console.log(`${slide.name}: attempt ${attempt} failed — ${r.why}`);
+      if (attempt < 3) {
+        const wait = r.limited ? BACKOFF[attempt] : 8_000;
+        console.log(`${slide.name}: waiting ${Math.round(wait / 1000)}s before retry`);
+        await new Promise((r2) => setTimeout(r2, wait));
+      }
     }
     console.log(`${slide.name}: FAILED`);
     return false;
