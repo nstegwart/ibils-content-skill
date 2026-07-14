@@ -91,6 +91,24 @@ async function finalizeOne(file) {
     "-resize", "1080x1350!",
     file
   ]);
+  // THE RESERVED CORNER MUST BE CLEAN *BEFORE* WE DROP THE LOGO ON IT.
+  //
+  // codex is told to leave the top-right ~280x280 empty. It ignores that often enough that it has
+  // to be checked — and this is the ONLY place it CAN be checked, because a few lines from now the
+  // logo is composited there and the evidence is destroyed forever.
+  //
+  // (Learned by running the art gate AFTER finalize and getting 12/12 failures for "artwork in the
+  // reserved corner". The artwork was my own logo.)
+  const cnr = await convert([file, "-alpha", "remove",
+    "-gravity", "northeast", "-crop", "280x280+0+0", "+repage",
+    "-format", "%[fx:standard_deviation]", "info:"]);
+  const sd = parseFloat(cnr.stdout);
+  if (Number.isFinite(sd) && sd > 0.13) {
+    throw new Error(
+      `the reserved top-right corner is NOT empty (stddev ${sd.toFixed(3)}) — codex drew in it, and ` +
+      `the logo is about to land on top of that artwork. Re-roll this slide.`);
+  }
+
   // App Store icon — always top-RIGHT corner, small.
   // The SOURCE asset is deliberately hi-res (512px) so it downsamples crisp. The ON-SLIDE size is
   // therefore stated EXPLICITLY here and must never be inherited from the asset's own dimensions —
