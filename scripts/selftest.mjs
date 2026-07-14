@@ -181,6 +181,93 @@ await test("the codex account pool and Google Storage are really gone", async ()
   if ((r.stdout || "").trim()) throw new Error(`dead mechanism still referenced in: ${r.stdout.trim()}`);
 });
 
+// ---------------------------------------------------------------- the new format gates
+const writeJson = async (name, obj) => {
+  const f = path.join(TMP, name);
+  await fs.writeFile(f, JSON.stringify(obj));
+  return f;
+};
+const lintScript = (kind, f) => node([path.join(ROOT, "runtime/lint-script.mjs"), kind, f]);
+
+await test("comedy gate KILLS an even-timed joke (the metronome death)", async () => {
+  const f = await writeJson("c1.json", {
+    register: "lo-gue", punch_mechanism: 1, punch_word: "transaksi",
+    beats: [
+      { beat: "SETUP", lines: [
+        { id: "L1", text: "Gue orangnya hemat.", est_seconds: 2.8, visual: "a guy at a warung" },
+        { id: "L2", text: "Jajan dikit banget.", est_seconds: 2.7, visual: "bare table" }]},
+      { beat: "PRE_PUNCH", lines: [{ id: "L3", text: "Paling kopi doang.", est_seconds: 2.9, visual: "he sips" }]},
+      { beat: "PUNCH", lines: [{ id: "L4", text: "Empat puluh tujuh transaksi.", est_seconds: 1.4,
+        pause_after_ms: 1000, visual: "a till roll unspooling out the door" }]},
+    ],
+  });
+  const out = lintScript("comedy", f).stdout;
+  if (!/C5:.*pre-punch/i.test(out)) throw new Error("an evenly-timed joke passed — the metronome death is unchecked");
+});
+
+await test("comedy gate KILLS a picture that illustrates the line (no gap = no joke)", async () => {
+  const f = await writeJson("c2.json", {
+    register: "lo-gue", punch_mechanism: 1, punch_word: "transaksi",
+    beats: [
+      { beat: "SETUP", lines: [
+        { id: "L1", text: "Gue hemat.", est_seconds: 2.6, visual: "a guy" },
+        { id: "L2", text: "Jajan dikit.", est_seconds: 2.9, visual: "bare table" }]},
+      { beat: "PRE_PUNCH", lines: [{ id: "L3", text: "Kopi doang.", est_seconds: 4.4, visual: "he freezes" }]},
+      { beat: "PUNCH", lines: [{ id: "L4", text: "Empat puluh tujuh transaksi.", est_seconds: 1.4,
+        pause_after_ms: 1000, visual: "a phone showing 47 transaksi" }]},   // <- illustrating it
+    ],
+  });
+  const out = lintScript("comedy", f).stdout;
+  if (!/C7:.*illustrat/i.test(out)) throw new Error("the punch picture illustrated the punch line and passed");
+});
+
+await test("comedy gate PASSES a correctly built joke", async () => {
+  const f = await writeJson("c3.json", {
+    register: "lo-gue", punch_mechanism: 1, punch_word: "transaksi",
+    beats: [
+      { beat: "SETUP", lines: [
+        { id: "L1", text: "Gue orangnya hemat.", est_seconds: 2.6, visual: "a guy at a warung, calm" },
+        { id: "L2", text: "Sebulan ini jajan dikit banget.", est_seconds: 2.9, visual: "he shrugs, table bare" }]},
+      { beat: "PRE_PUNCH", lines: [{ id: "L3", text: "Paling cuma kopi sama minimarket.", est_seconds: 4.4,
+        visual: "he holds the pose, frozen mid-sip" }]},
+      { beat: "PUNCH", lines: [{ id: "L4", text: "Empat puluh tujuh transaksi.", est_seconds: 1.4,
+        pause_after_ms: 1000, visual: "a paper till roll unspooling across the floor and out the door" }]},
+    ],
+  });
+  const r = lintScript("comedy", f);
+  if (r.status !== 0) throw new Error(`a correct joke was rejected:\n${r.stdout}`);
+});
+
+await test("story gate KILLS an isochronous edit (the screensaver rhythm)", async () => {
+  const mk = (n, fn, conn, stake, dur) => ({ n, function: fn, connector: conn, stake, dur,
+    location: "kos", vo: "x", visual: "she waits" });
+  const f = await writeJson("s1.json", {
+    want: "Rp 1.2 juta for the kos deposit by Friday", arc_direction: "dark_to_light",
+    scenes: [mk(1, "setup", null, 1, 6), mk(2, "escalation", "THEREFORE", 2, 6),
+             mk(3, "escalation", "BUT", 3, 6), mk(4, "escalation", "BUT", 4, 6),
+             mk(5, "turn", "BUT", 5, 6), mk(6, "resolution", "THEREFORE", 5, 6)],
+  });
+  const out = lintScript("story", f).stdout;
+  if (!/S7:.*coefficient of variation/i.test(out)) throw new Error("every scene the same length and it passed");
+});
+
+await test("story gate KILLS 'AND THEN' and a narrated moral", async () => {
+  const f = await writeJson("s2.json", {
+    want: "Rp 1.2 juta by Friday", arc_direction: "dark_to_light",
+    scenes: [
+      { n: 1, function: "setup", connector: null, stake: 1, dur: 6, location: "kos", vo: "a", visual: "b" },
+      { n: 2, function: "escalation", connector: "AND", stake: 2, dur: 5, location: "kos", vo: "a", visual: "b" },
+      { n: 3, function: "escalation", connector: "BUT", stake: 3, dur: 4, location: "kos", vo: "a", visual: "b" },
+      { n: 4, function: "turn", connector: "BUT", stake: 5, dur: 8, location: "kos", vo: "a", visual: "b" },
+      { n: 5, function: "resolution", connector: "THEREFORE", stake: 5, dur: 7, location: "kos",
+        vo: "Sekarang gue sadar semuanya.", visual: "b" },
+    ],
+  });
+  const out = lintScript("story", f).stdout;
+  if (!/S1:.*AND/i.test(out)) throw new Error("an AND-THEN connector passed");
+  if (!/S10:.*moral/i.test(out)) throw new Error("a narrated moral passed");
+});
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 await fs.rm(TMP, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
