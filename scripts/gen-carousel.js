@@ -16,6 +16,12 @@ import { spawn } from "node:child_process";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS = path.join(HERE, "..", "assets");
+
+// The IG handle is a property of the SURFACE, never a literal in a prompt. The carousel ships in
+// ENGLISH to the global account. 48 of the first 64 English slides went out stamped @ibils.savy —
+// which is not the English account — because this was a hardcoded string and the skill had no idea
+// what a surface was. See references/surfaces.md; that table is the source of truth.
+const IG_HANDLE = process.env.IG_HANDLE || "@ibils.global";
 const HIMEL_REFS = ["hero", "explain", "invite", "alert"].map((p) =>
   path.join(ASSETS, `himel-pose-${p}.png`)
 );
@@ -98,7 +104,7 @@ const NOT_AI = [
 
 const BRANDING =
   "BRANDING — draw NO logo and NO 'Ibils' wordmark. Top-RIGHT corner stays " +
-  "empty (the logo is composited there). Footer only: a small '@ibils.savy' " +
+  "empty (the logo is composited there). Footer only: a small '" + IG_HANDLE + "' " +
   "handle bottom-left and the slide number bottom-right.";
 
 const PROP_RULE = [

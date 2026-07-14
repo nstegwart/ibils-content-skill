@@ -81,7 +81,7 @@ restrained, editorial — a finished design asset.
 ```
 BRANDING — the slide has NO drawn logo and NO 'Ibils' wordmark. Keep the
 TOP-RIGHT corner empty (the real logo is composited there). Only draw the
-footer: a small '@ibils.savy' handle bottom-left and the slide number
+footer: a small handle bottom-left (from references/surfaces.md — English = @ibils.global) and the slide number
 bottom-right.
 ```
 

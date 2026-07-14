@@ -268,6 +268,16 @@ await test("story gate KILLS 'AND THEN' and a narrated moral", async () => {
   if (!/S10:.*moral/i.test(out)) throw new Error("a narrated moral passed");
 });
 
+await test("no generator hardcodes an IG handle (it is surface-derived)", async () => {
+  // 48 of the first 64 English slides shipped stamped @ibils.savy — not the English account —
+  // because the handle was a string literal and the skill had no concept of a surface.
+  const src = await liveCode("scripts/gen-carousel.js");
+  if (/@ibils\.savy/.test(src)) throw new Error("gen-carousel.js hardcodes @ibils.savy — English content posts to @ibils.global");
+  if (!/IG_HANDLE/.test(src)) throw new Error("gen-carousel.js does not derive the handle from the surface");
+  const table = await fs.readFile(path.join(ROOT, "references/surfaces.md"), "utf8").catch(() => "");
+  if (!/@ibils\.global/.test(table)) throw new Error("references/surfaces.md does not name the English account");
+});
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 await fs.rm(TMP, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
