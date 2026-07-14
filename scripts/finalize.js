@@ -270,18 +270,52 @@ async function main() {
             `${(inkFrac * 100).toFixed(2)}% edges — that is TYPE OR ARTWORK, and the phone is about to be ` +
             `pasted on top of it. Re-roll the plate: the headline must stay left of x=${TYPE_COL}.`);
         }
+        // THE SHADOW IS DRAWN HERE, NOT BAKED INTO THE ASSET.
+        //
+        // It used to live in closing-phone.png and it shipped a visible dark RECTANGLE around the
+        // device, because the asset's own `-trim` cropped the canvas straight through the shadow's
+        // falloff — leaving it 45% opaque at the pixel where the image ran out. A gradient cut off
+        // mid-fade is a box.
+        //
+        // A shadow depends on the surface under it, and an asset cannot know what it will be dropped
+        // onto. So it is drawn at the composite, where the background is actually known.
+        const gx0 = dx >= 0 ? `+${dx}` : `${dx}`;
+        const gy0 = dy >= 0 ? `+${dy}` : `${dy}`;
         await convert([
-          file, "(", CLOSING_PHONE, "-resize", `x${PHONE_H}`, ")",
-          "-gravity", "center", "-geometry", `${dx >= 0 ? "+" : ""}${dx}${dy >= 0 ? "+" : ""}${dy}`, "-composite",
+          file,
+          "(", CLOSING_PHONE, "-resize", `x${PHONE_H}`,
+          "-background", "black", "-shadow", "40x22+0+16", ")",
+          "-gravity", "center", "-geometry", `${gx0}${dy + 10 >= 0 ? "+" : ""}${dy + 10}`, "-composite",
+          "(", CLOSING_PHONE, "-resize", `x${PHONE_H}`, ")",
+          "-gravity", "center", "-geometry", `${gx0}${gy0}`, "-composite",
           file
         ]);
-        // store badges — small, composited from the hi-res official asset
-        // (downscaled = crisp), sitting on the plain bg, no card behind.
+        // store badges — small, composited from the hi-res official asset (downscaled = crisp),
+        // sitting on the plain bg, no card behind.
+        //
+        // CENTRED. The +100 x-offset that used to be here was there to dodge Himel, who stood in the
+        // bottom-left of the closing slide. Himel is no longer drawn on this slide at all, so the
+        // offset had stopped dodging anything and was simply pushing the badges 100px off-centre —
+        // which is what "posisi playstore dan appstore berantakan" actually was. Stale geometry
+        // outlives the thing it was avoiding, and it never announces itself.
         await convert([
           file, "(", STORE_BADGES, "-resize", `${BADGES_W}x`, ")",
-          "-gravity", "south", "-geometry", "+100+95", "-composite",
+          "-gravity", "south", "-geometry", "+0+95", "-composite",
           file
         ]);
+
+        // and PROVE they are centred. This is one line, and the defect it catches was visible to the
+        // owner from across the room while every gate in this file reported success.
+        const bstrip = await convert([file, "-crop", "1080x180+0+1150", "+repage",
+          "-fuzz", "12%", "-transparent", "srgb(9,58,32)", "-format", "%@", "info:"]).catch(() => null);
+        const m = bstrip && /^(\d+)x(\d+)\+(\d+)\+/.exec(bstrip.stdout.trim());
+        if (m) {
+          const centre = Number(m[3]) + Number(m[1]) / 2;
+          if (Math.abs(centre - 540) > 6) {
+            throw new Error(`the store badges are centred at x=${centre.toFixed(0)}, not 540 — they are ` +
+              `${Math.abs(centre - 540).toFixed(0)}px off-centre on a 1080px slide`);
+          }
+        }
         console.log(`${name}: 1080x1350 + logo + phone + store badges`);
       } else {
         console.log(`${name}: 1080x1350 + logo`);

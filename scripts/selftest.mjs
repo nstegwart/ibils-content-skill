@@ -477,6 +477,40 @@ await test("finalize is IDEMPOTENT — running it twice changes nothing", async 
   if (!/already finalis/i.test(r2.stdout)) throw new Error("the second run did not recognise the slide as finished");
 });
 
+// ---------------------------------------------------------------- assets fade to nothing
+await test("ASSET: closing-phone reaches alpha=0 at every edge", async () => {
+  // "ada shadow". The asset carried a baked shadow that its own `-trim` cropped MID-FALLOFF, leaving
+  // alpha 13-115 sitting on the canvas boundary. Any non-zero alpha at the edge of a transparent
+  // asset becomes a hard straight line the instant it is composited — the eye reads it as a box, and
+  // nothing done at the composite site can undo it.
+  const asset = path.join(ROOT, "assets/closing-phone.png");
+  for (const [side, crop] of [["north", "100%x1+0+0"], ["south", "100%x1+0+0"],
+                              ["east", "1x100%+0+0"], ["west", "1x100%+0+0"]]) {
+    const a = parseFloat(magick([asset, "-alpha", "extract", "-gravity", side,
+      "-crop", crop, "+repage", "-format", "%[fx:maxima*255]", "info:"]).stdout);
+    if (a > 1) throw new Error(`${side} edge is alpha=${a.toFixed(0)} — composited, that edge is a visible straight line`);
+  }
+});
+
+await test("ASSET: the shadow is NOT baked in — it belongs to the composite", async () => {
+  const src = await liveCode("scripts/make-closing-phone.mjs");
+  if (/shplate/.test(src)) throw new Error("a shadow is baked into the asset again — it cannot know what surface it will land on, and -trim will crop its falloff into a box");
+  const fin = await liveCode("scripts/finalize.js");
+  if (!/-shadow/.test(fin)) throw new Error("the asset has no shadow and finalize does not draw one — the phone now sits flat on the slide");
+});
+
+await test("CLOSING: the store badges are CENTRED", async () => {
+  // "posisi playstore dan appstore berantakan". A +100 x-offset had been sitting in finalize to dodge
+  // Himel, who used to stand in the bottom-left of the closing slide. Himel is no longer drawn there.
+  // The offset stopped dodging anything years of edits ago and just pushed the badges 100px off-centre.
+  // Stale geometry outlives the thing it was avoiding, and it never announces itself.
+  const src = await liveCode("scripts/finalize.js");
+  const m = /STORE_BADGES[\s\S]{0,200}?"-gravity", "south", "-geometry", "\+(-?\d+)\+/.exec(src);
+  if (!m) throw new Error("cannot find the badge placement");
+  if (Number(m[1]) !== 0) throw new Error(`the badges are composited ${m[1]}px off-centre`);
+  if (!/badges are centred at x=/.test(src)) throw new Error("nothing MEASURES the badge centring on the rendered slide — the offset can drift back silently");
+});
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 await fs.rm(TMP, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);

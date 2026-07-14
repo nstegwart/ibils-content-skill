@@ -110,20 +110,25 @@ async function main() {
     `roundrectangle ${BEZEL - 6},${BEZEL - 6},${W - BEZEL + 5},${H - BEZEL + 5},${R_SCREEN + 6},${R_SCREEN + 6}`,
     p("body2")]);
 
-  // 7. shadow: soft, offset down — the phone floats, it does not sit on a shelf.
+  // 7. NO SHADOW IS BAKED INTO THIS ASSET. THE SHADOW BELONGS TO THE COMPOSITE.
   //
-  //    NEVER touch -colorspace gray here. A grayscale image dragged into the final composite makes
-  //    ImageMagick adopt a grayscale working colourspace for the WHOLE stack, and every layer put on
-  //    top of it — including the teal screen — comes out silently DESATURATED. It shipped grey once.
-  //    So: build the shadow as a genuinely BLACK sRGB plate whose ALPHA is the blurred body mask.
-  await sh(["-size", `${W}x${H}`, "xc:black", "-colorspace", "sRGB", "-alpha", "set",
-    "(", p("bmask"), "-blur", `0x${Math.round(W * 0.055)}`, ")",
-    "-compose", "CopyOpacity", "-composite",
-    "-channel", "A", "-evaluate", "multiply", "0.45", "+channel", p("shplate")]);
+  //    There used to be one here, and it shipped a visible dark RECTANGLE around the phone on the
+  //    closing slide. The cause was the `-trim` on the very last line: trim crops the canvas to the
+  //    bounding box of everything non-transparent, so it cropped straight through the shadow's soft
+  //    falloff and left the outermost pixels at alpha 13-115 sitting ON the canvas edge. A gradient
+  //    that is still 45% opaque when it runs out of canvas is not a shadow. It is a box.
+  //
+  //    A shadow also cannot be baked at all, on principle: it depends on the surface underneath it,
+  //    and this asset does not know what it will be dropped onto. finalize.js draws it at composite
+  //    time, where the background is actually known. (make-endcard.mjs already worked this way.)
+  //
+  //    NEVER touch -colorspace gray anywhere in this file. A grayscale image dragged into the
+  //    composite makes ImageMagick adopt a grayscale working colourspace for the WHOLE stack, and
+  //    every layer on top of it — including the teal screen — comes out silently DESATURATED. It
+  //    shipped grey once.
 
   // 8. assemble — base canvas is explicitly sRGB
   await sh(["-size", `${CW}x${CH}`, "xc:none", "-colorspace", "sRGB",
-    p("shplate"), "-geometry", `+${X}+${Y + Math.round(H * 0.028)}`, "-composite",
     p("body2"), "-geometry", `+${X}+${Y}`, "-composite",
     p("screen3"), "-geometry", `+${SX}+${SY}`, "-composite",
     "-colorspace", "sRGB", p("phone")]);
@@ -133,7 +138,10 @@ async function main() {
   const IX = SX + Math.round((SW - IW) / 2), IY = SY + Math.round(SH_ * 0.022);
   await sh([p("phone"), "-fill", "#08090A", "-draw",
     `roundrectangle ${IX},${IY},${IX + IW},${IY + IH},${IH / 2},${IH / 2}`,
-    "-trim", "+repage", OUT]);
+    // trim to the body (which is hard-edged, so there is nothing soft to cut through), then give it
+    // back a fully-transparent margin. The asset must reach alpha=0 BEFORE the canvas edge, or
+    // whatever is at that edge becomes a straight line the moment it is composited.
+    "-trim", "+repage", "-bordercolor", "none", "-border", "24", OUT]);
 
   const { spawnSync } = await import("node:child_process");
   const dim = spawnSync("magick", [OUT, "-format", "%wx%h", "info:"], { encoding: "utf8" }).stdout;
@@ -149,7 +157,29 @@ async function main() {
     throw new Error(`screen is not teal — got rgb(${r|0},${g|0},${b|0}). ` +
       `A grayscale base canvas desaturates every composite onto it.`);
   }
-  console.log(`closing-phone: ${dim.trim()}  screen rgb(${r|0},${g|0},${b|0}) TEAL ok -> ${OUT}`);
+
+  // ASSERT THE ASSET FADES TO NOTHING BEFORE ITS OWN EDGE.
+  //
+  // This is the whole bug the owner just sent back ("ada shadow"): the previous asset carried a baked
+  // shadow that `-trim` cropped mid-falloff, leaving alpha 13-115 sitting on the canvas boundary. Any
+  // non-zero alpha at the edge of a transparent asset becomes a HARD STRAIGHT LINE the instant it is
+  // composited onto anything — the eye reads it as a box, and no amount of care at the composite site
+  // can undo it. So the asset itself has to prove it ends in nothing.
+  const edge = spawnSync("magick", [OUT, "-alpha", "extract",
+    "-format", "%[fx:maxima]", "info:"], { encoding: "utf8" });   // sanity: alpha channel exists
+  const maxEdgeAlpha = ["north", "south", "east", "west"].map((side) => {
+    const strip = spawnSync("magick", [OUT, "-alpha", "extract", "-gravity", side,
+      "-crop", (side === "north" || side === "south") ? "100%x1+0+0" : "1x100%+0+0", "+repage",
+      "-format", "%[fx:maxima*255]", "info:"], { encoding: "utf8" }).stdout;
+    return { side, a: parseFloat(strip) || 0 };
+  });
+  const dirty = maxEdgeAlpha.filter((e) => e.a > 1);
+  if (dirty.length) {
+    throw new Error(
+      `the asset does not reach alpha=0 at its edges — ${dirty.map((d) => `${d.side}=${d.a.toFixed(0)}`).join(", ")}. ` +
+      `Composited, every one of those edges is a visible straight line. Give it a transparent border.`);
+  }
+  console.log(`closing-phone: ${dim.trim()}  screen rgb(${r|0},${g|0},${b|0}) TEAL ok, edges alpha=0 -> ${OUT}`);
 }
 
 main().catch((e) => { console.error("ERROR", e.message); process.exit(1); });
