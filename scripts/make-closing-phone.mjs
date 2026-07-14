@@ -81,11 +81,42 @@ async function main() {
   await sh(["-background", "none", "-fill", "white", "-font", font,
     "-pointsize", String(FS), "label:Ibils", "-trim", "+repage", p("word")]);
 
-  // 4. compose the screen contents, optically centred (slightly above true centre — a dead-centre
-  //    lockup always reads as sinking)
+  // 4. THE LOCKUP. Build the mark and the wordmark into ONE unit, with an EXPLICIT gap, and then
+  //    place that unit — instead of placing the two pieces separately and hoping.
+  //
+  //    They used to be composited independently, each at its own hardcoded percentage of the screen
+  //    height (mark at -6%, word at +11%). But BOTH are `-trim`med, so their heights depend on the
+  //    artwork — which means the space between them was never a decision at all. It was arithmetic
+  //    left over from two numbers that did not know about each other, and it came out cramped: the
+  //    owner could see the wordmark crowding the mark ("text ke logo ibils mepet").
+  //
+  //    A gap you did not choose is a gap you cannot defend. So: measure both pieces, set the leading
+  //    from the wordmark's own type size (which is what optical spacing actually keys off), stack
+  //    them, and centre the whole lockup once.
+  // sh() runs with stdio ignored — it is for side effects, not for reading. Measuring needs its own
+  // call that actually keeps stdout.
+  const { spawnSync: ss } = await import("node:child_process");
+  const dims = (key) => {
+    const out = ss("magick", [p(key), "-format", "%w %h", "info:"], { encoding: "utf8" }).stdout;
+    const [a, b] = (out || "").trim().split(/\s+/).map(Number);
+    if (!a || !b) throw new Error(`cannot measure ${key}`);
+    return [a, b];
+  };
+  const [mw, mh] = dims("mark");
+  const [ww, wh] = dims("word");
+
+  const GAP = Math.round(FS * 0.72);        // leading between mark and wordmark
+  const LOCK_W = Math.max(mw, ww);
+  const LOCK_H = mh + GAP + wh;
+  await sh(["-size", `${LOCK_W}x${LOCK_H}`, "xc:none", "-colorspace", "sRGB",
+    p("mark"), "-gravity", "north", "-geometry", "+0+0", "-composite",
+    p("word"), "-gravity", "south", "-geometry", "+0+0", "-composite",
+    p("lockup")]);
+
+  //    Optical centring: a lockup on the true centre line always reads as SINKING, because the eye
+  //    puts the centre of a vertical field slightly above its measured middle. Lift it.
   await sh([p("screen"),
-    p("mark"), "-gravity", "center", "-geometry", `+0-${Math.round(SH_ * 0.06)}`, "-composite",
-    p("word"), "-gravity", "center", "-geometry", `+0+${Math.round(SH_ * 0.11)}`, "-composite",
+    p("lockup"), "-gravity", "center", "-geometry", `+0-${Math.round(SH_ * 0.03)}`, "-composite",
     p("screen2")]);
 
   // 5. glass: a WHISPER of light falling from the top-left.
@@ -178,6 +209,15 @@ async function main() {
     throw new Error(
       `the asset does not reach alpha=0 at its edges — ${dirty.map((d) => `${d.side}=${d.a.toFixed(0)}`).join(", ")}. ` +
       `Composited, every one of those edges is a visible straight line. Give it a transparent border.`);
+  }
+
+  // ASSERT THE LOCKUP CAN BREATHE. The wordmark used to crowd the mark because nobody had ever
+  // DECIDED how far apart they should be — the distance was a by-product of two independent
+  // percentages. It is a decision now, so it gets defended: the gap must be at least half the
+  // wordmark's own type size, or the two elements are reading as one blob.
+  const MIN_GAP = Math.round(FS * 0.5);
+  if (GAP < MIN_GAP) {
+    throw new Error(`the mark and the wordmark are ${GAP}px apart but the type is ${FS}px — that is crowding, not a lockup`);
   }
   console.log(`closing-phone: ${dim.trim()}  screen rgb(${r|0},${g|0},${b|0}) TEAL ok, edges alpha=0 -> ${OUT}`);
 }
