@@ -56,8 +56,8 @@ function comedy(s) {
       `"be funny" is not an instruction — an unconstrained model produces a personified wallet.`);
   }
 
-  // --- C4 banned: the single loudest AI finance-joke tell
-  const WALLET = ["dompet gue nangis", "dompet nangis", "rekening sekarat", "rekening gue sekarat", "saldo pamit",
+  // --- C4 banned: the single loudest AI finance-joke tell  (word-level; skip on a skeleton)
+  const WALLET = SKELETON ? [] : ["dompet gue nangis", "dompet nangis", "rekening sekarat", "rekening gue sekarat", "saldo pamit",
     "saldo gue pamit", "dompet menjerit", "wallet is crying", "bank account is crying", "wallet filed", "money cries"];
   for (const l of flat) {
     const t = String(l.text || "").toLowerCase();
@@ -65,7 +65,7 @@ function comedy(s) {
   }
 
   // --- C10: register. formal connective tissue = the writer's ear was never in lo/gue.
-  if (s.register === "lo-gue") {
+  if (s.register === "lo-gue" && !SKELETON) {
     const FORMAL = ["namun", "oleh karena itu", "adalah", "tersebut", "anda", "selain itu", "demikian", "para "];
     const DEAD = ["kids jaman now", "generasi micin", "cetar", "ciyus", "miapah", "unyu", "woles", "mantul", "gaes"];
     const CRINGE = ["wkwk", "awokwok", "haha", "ngakak", "gokil sih", "kocak banget"];
@@ -78,7 +78,7 @@ function comedy(s) {
   }
 
   const punchLine = punches[0]?.lines?.[0];
-  if (punchLine) {
+  if (punchLine && !SKELETON) {
     // --- C6: END-WEIGHT. the laugh cannot start while grammar is still arriving.
     const pw = String(s.punch_word || "").toLowerCase();
     const tk = words(punchLine.text);
@@ -95,6 +95,7 @@ function comedy(s) {
     if (after.length) fail(`C1: ${after.length} line(s) after the punch (${after.map((l) => l.id).join(",")}). Explanation is the anti-laugh — the laugh IS the viewer closing the gap.`);
 
     // --- C7: THE GAP LAW. the picture must CONTRADICT the voice, not illustrate it.
+    // (structural — but it needs real words on both sides to compare, so it waits for Gemini)
     const vo = new Set(words(punchLine.text).filter((w) => !STOP.has(w) && w.length > 2));
     const vis = new Set(words(punchLine.visual).filter((w) => !STOP.has(w) && w.length > 2));
     const shared = [...vo].filter((w) => vis.has(w));
@@ -229,18 +230,37 @@ function story(s) {
     if (a && b && a !== b) warn(`S10: the film does not bookend (${a} -> ${b}). Default ending returns to scene 1's location with exactly ONE element changed. Set "bookend": false with a reason if that is intended.`);
   }
 
-  // --- S11: the app never rescues.
+  // --- S11: OUR app never rescues.
+  //
+  // This must match the PRODUCT, not the word "app". It fired on a true-crime story whose scene 2
+  // reads "the app shows it growing" — the SCAMMER's fake trading platform. Catching that is not
+  // protecting the story, it is forbidding the story from having a villain with a phone.
+  // Match Ibils by name only.
+  const PRODUCT = /\bibils\b|\bour app\b|\baplikasi kita\b/i;
   for (const x of sc) {
-    if (["setup", "escalation", "turn"].includes(x.function) && /ibils|aplikasi|the app/i.test(`${x.vo} ${x.visual}`)) {
+    if (["setup", "escalation", "turn"].includes(x.function) && PRODUCT.test(`${x.vo} ${x.visual}`)) {
       fail(`S11: the product appears in scene ${x.n} (${x.function}). The TURN must be the protagonist's own decision, performed on camera. The app may appear in RESOLUTION and endcard only.`);
     }
   }
 }
 
 // ============================================================
-const [, , kind, file] = process.argv;
+// TWO PASSES, because you cannot check a word before the word exists.
+//
+//   --skeleton   run BEFORE Gemini writes the lines. Checks STRUCTURE: the timing skeleton, the
+//                declared punch mechanism, the gap between what is said and what is shown, where the
+//                product is allowed to appear, the scene ledger's causality and escalation.
+//                A dead structure dies here, for free.
+//   (default)    run AFTER Gemini writes the lines. Adds the word-level laws: where the punch word
+//                sits, the register, the banned phrases.
+//
+// Running the word-level laws against placeholder prose just fails on the placeholder — which is
+// exactly what happened the first time I used this tool on a real skeleton.
+const SKELETON = process.argv.includes("--skeleton");
+const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const [kind, file] = args;
 if (!kind || !file) {
-  console.error("usage: lint-script.mjs <comedy|story> <script.json>");
+  console.error("usage: lint-script.mjs <comedy|story> <script.json> [--skeleton]");
   process.exit(1);
 }
 const s = JSON.parse(await fs.readFile(file, "utf8"));
@@ -250,7 +270,9 @@ else { console.error(`unknown format: ${kind}`); process.exit(1); }
 
 for (const w of WARN) console.log(`\x1b[33mWARN\x1b[0m ${w}`);
 for (const f of FAIL) console.log(`\x1b[31mFAIL\x1b[0m ${f}`);
+const phase = SKELETON ? "STRUCTURE" : "FULL";
 console.log(FAIL.length
-  ? `\n\x1b[31mVERDICT: FAIL\x1b[0m — ${FAIL.length} law(s) broken. Fix the SCRIPT. It is free here and expensive after the plates.`
-  : `\n\x1b[32mVERDICT: PASS\x1b[0m${WARN.length ? ` (${WARN.length} warning)` : ""}`);
+  ? `\n\x1b[31mVERDICT: FAIL (${phase})\x1b[0m — ${FAIL.length} law(s) broken. Fix the SCRIPT. It is free here and expensive after the plates.`
+  : `\n\x1b[32mVERDICT: PASS (${phase})\x1b[0m${WARN.length ? ` (${WARN.length} warning)` : ""}` +
+    (SKELETON ? `\n  Structure holds. Hand it to Gemini for the lines, then re-run WITHOUT --skeleton.` : ""));
 process.exit(FAIL.length ? 1 : 0);
