@@ -128,6 +128,30 @@ function lintSlide(slide, idx) {
   for (const p of BANNED) {
     if (hay.includes(p)) fails.push(`banned vague phrase: "${p}"`);
   }
+  // THE DEFERRAL — a headline that PROMISES a claim instead of MAKING one.
+  //
+  // A banlist can only catch a phrase somebody already thought of. "Why you overspend — and how to
+  // stop" is not on any banlist, and it shipped. So catch the SHAPE, not the string.
+  //
+  // The test is simple and it is the whole doctrine: **can a reader disagree with this headline?**
+  // "Your problem isn't overspending, it's memory" — you can argue with that. It is a claim.
+  // "Why you overspend and how to stop"           — there is nothing to argue with. It is a receipt
+  //                                                  for a claim you will be given later.
+  // A headline that defers has said nothing, and saying nothing is what "AI-generated" reads as.
+  const DEFER = /\b(how to|ways? to|things? (you|to)|steps? to|tips?|secrets?|reasons? (why|you)|what (you|nobody)|why you .* (and|--|—) how)\b/i;
+  const LISTICLE = /^\s*\d+\s+\w+/;   // "5 ways...", "7 habits..."
+  for (const line of [headline]) {
+    if (!line) continue;
+    if (DEFER.test(line) || LISTICLE.test(line)) {
+      fails.push(
+        `deferral: "${line}" — this headline PROMISES a claim instead of MAKING one. Nobody can ` +
+        `disagree with it, so it says nothing. Ask: could a reader argue with this? If not, it is a ` +
+        `teaser. State the thing. "Your problem isn't overspending, it's memory" is a claim; ` +
+        `"why you overspend and how to stop" is a receipt for one.`
+      );
+    }
+  }
+
   // THE BALANCED TRIPLET — the strongest "written by an AI" tell in English, and the one no
   // string-match can catch: three parallel items in a row ("faster, easier, and more accurate";
   // "track it, tag it, forget it"). A human writes two, or four, or an uneven list. A model writes
