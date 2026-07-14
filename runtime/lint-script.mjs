@@ -112,6 +112,35 @@ function comedy(s) {
     }
   }
 
+  // --- C8b: THE SCRIPT IS A CONFESSION, NOT AN ACCUSATION.
+  //
+  // The gate caught two broken laws on Gemini's first draft and MISSED the worst thing about it:
+  // every single line pointed at the viewer, and two of them mocked him —
+  //   "literasi finansialnya di bawah rata-rata"   ("your financial literacy is below average")
+  //   "sisa duit lo yang nggak seberapa"           ("what little money you have left")
+  // That is a joke told DOWNWARD, at the person we are asking to trust us. It is the worst thing a
+  // brand can do with humour and my gate let it through, because I was only checking the PUNCH's
+  // subject.
+  //
+  // The fix is structural, not another banlist. COUNT WHO THE SCRIPT IS ABOUT. A confession is
+  // mostly "gue". An accusation is mostly "lo". The setup may hook with one "lo" — after that,
+  // every line belongs to the narrator. If the script points outward more than it points inward,
+  // it is not a confession, and no rewording of the individual lines will fix that.
+  if (!SKELETON) {
+    const YOU = /\b(lo|lu|kamu|anda)\b/i;
+    const ME  = /\b(gue|gw|aku|saya)\b/i;
+    const body = flat.filter((l) => !["ENDCARD"].includes(String(l.beat).toUpperCase()));
+    const youLines = body.filter((l) => YOU.test(l.text || "") && !ME.test(l.text || ""));
+    if (youLines.length > 1) {
+      fail(
+        `C8: ${youLines.length} of ${body.length} lines point at "lo" and never at "gue" ` +
+        `(${youLines.map((l) => l.id).join(", ")}). This is an ACCUSATION, not a confession. ` +
+        `The setup may hook with ONE "lo"; after that every line belongs to the narrator. ` +
+        `We are laughing WITH him at himself — never AT the person we are asking to trust us.`
+      );
+    }
+  }
+
   // --- C8: strip the endcard and it must still be a joke
   for (const l of flat) {
     if (/ibils/i.test(l.text || "") && String(l.beat).toUpperCase() !== "ENDCARD") {
