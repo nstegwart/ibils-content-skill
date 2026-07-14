@@ -336,6 +336,20 @@ await test("AUDIENCE LAW kills a true, sourced, perfectly-gated deck aimed at th
   if (!/GLOBAL audience/.test(out)) throw new Error("an Indonesia-only deck shipped to a global surface");
 });
 
+await test("EVIDENCE LAW: an artifact with no source footer is REFUSED", async () => {
+  const f = await writeJson("noftr.json", { type: "table", title: "x", columns: ["a","b"], rows: [["1","2"]] });
+  const out = path.join(TMP, "noftr.png");
+  const r = node([path.join(ROOT, "scripts/render-artifact.mjs"), f, out]);
+  if (r.status === 0) throw new Error("an artifact with no source shipped — that is decoration pretending to be evidence");
+});
+
+await test("EVIDENCE LAW: amber marks only what MOVED", async () => {
+  const src = await liveCode("scripts/render-artifact.mjs");
+  if (!/String\(row\[i - 1\]/.test(src)) {
+    throw new Error("the highlight does not compare against the previous column — a value that stood still would get the accent, and an accent that means nothing stops being trusted");
+  }
+});
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 await fs.rm(TMP, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
