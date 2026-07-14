@@ -24,6 +24,10 @@
  *             6. the premise is safe            -> the personified-wallet family is banned outright
  */
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 const FAIL = [];
 const WARN = [];
@@ -245,6 +249,46 @@ function story(s) {
     const mean = total / durs.length;
     const cov = Math.sqrt(durs.reduce((a, d) => a + (d - mean) ** 2, 0) / durs.length) / mean;
     if (cov < 0.25) fail(`S7: shot-duration coefficient of variation is ${cov.toFixed(2)} (<0.25). Every scene the same length is the rhythm of a screensaver.`);
+  }
+
+  // --- S12: THE VOICE OWNS THE CLOCK. A declared duration is a guess until you hear it.
+  //
+  // I wrote this law in formats/story/SKILL.md and then broke it on the very first script:
+  //   "In the ad, shot durations are DECIDED. In a voiced piece they are DISCOVERED from the
+  //    performance. That is why plates come AFTER recording."
+  // Then I declared 6.0s for a turn whose narration actually runs 15.8 SECONDS. Seven of eight
+  // scenes overran, and grok cannot produce a clip past 6.04s — so the ledger was fiction.
+  //
+  // So MEASURE IT. Synthesise each line and compare. This costs nothing and it is the difference
+  // between a script and a wish.
+  if (!SKELETON) {
+    let measured = 0;
+    for (const x of sc) {
+      if (!x.vo) continue;
+      const f = path.join(os.tmpdir(), `vo-${x.n}-${process.pid}.aiff`);
+      const r = spawnSync("say", ["-o", f, x.vo]);
+      if (r.status !== 0) break;          // no `say` on this machine — skip, do not pretend
+      const d = parseFloat(spawnSync("ffprobe",
+        ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f],
+        { encoding: "utf8" }).stdout) || 0;
+      try { fsSync.unlinkSync(f); } catch {}
+      if (!d) continue;
+      measured++;
+      if (d > 6.04) {
+        fail(`S12: scene ${x.n}'s narration runs ${d.toFixed(1)}s. grok cannot make a clip past ` +
+          `6.04s, so this scene CANNOT be one shot. Either cut the line, or declare a TWO-PLATE ` +
+          `HOLD (two plates of the same moment, different angles, cut together — a cut that does ` +
+          `not advance time).`);
+      } else if (d > x.dur + 0.4) {
+        fail(`S12: scene ${x.n} is declared ${x.dur}s but its narration actually runs ${d.toFixed(1)}s. ` +
+          `In a voiced piece the VOICE OWNS THE CLOCK — you do not get to decide the duration ` +
+          `before you have heard the line.`);
+      }
+    }
+    if (measured) {
+      const total = sc.reduce((a, x) => a + (Number(x.dur) || 0), 0);
+      if (total < 30 || total > 60) { /* already covered by S5 */ }
+    }
   }
 
   // --- S10: the ending is SHOWN. if the film worked, the moral is redundant; if it didn't, it's a confession.
