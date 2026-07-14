@@ -281,6 +281,31 @@ function story(s) {
     if (cov < 0.25) fail(`S7: shot-duration coefficient of variation is ${cov.toFixed(2)} (<0.25). Every scene the same length is the rhythm of a screensaver.`);
   }
 
+  // --- S13: A CAPTION YOU CANNOT READ IS A CAPTION THAT IS NOT THERE.
+  //
+  // With no voiceover (grok has no voice tool; macOS TTS is not shippable), the caption IS the
+  // narration — and a shot must be long enough to READ it. Comfortable on-screen reading is about
+  // 12-15 characters per second. Past that the viewer sees text flash past and takes in nothing,
+  // which is worse than silence, because it also steals their attention from the picture.
+  //
+  // This law only exists because we dropped the voice. It is the cost of that decision, and it
+  // bites hardest exactly where the escalation compresses — the late beats are SHORT, so their
+  // captions must be SHORT too. That is not a constraint fighting the craft; it IS the craft.
+  if (s.voice === "none") {
+    const MAX_CPS = 15;
+    for (const x of sc) {
+      const cap = x.caption ?? x.vo ?? "";
+      if (!cap) continue;
+      const cps = cap.length / x.dur;
+      if (cps > MAX_CPS) {
+        fail(`S13: scene ${x.n}'s caption is ${cap.length} characters in ${x.dur}s = ` +
+          `${cps.toFixed(1)} chars/sec. Above ~${MAX_CPS} the viewer cannot read it — the text ` +
+          `flashes past and they take in NOTHING, which is worse than silence. ` +
+          `Cut the words, or hold the shot.`);
+      }
+    }
+  }
+
   // --- S12: THE VOICE OWNS THE CLOCK. A declared duration is a guess until you hear it.
   //
   // I wrote this law in formats/story/SKILL.md and then broke it on the very first script:
@@ -291,7 +316,7 @@ function story(s) {
   //
   // So MEASURE IT. Synthesise each line and compare. This costs nothing and it is the difference
   // between a script and a wish.
-  if (!SKELETON) {
+  if (!SKELETON && s.voice !== "none") {
     let measured = 0;
     for (const x of sc) {
       if (!x.vo) continue;

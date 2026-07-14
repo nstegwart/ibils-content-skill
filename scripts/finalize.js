@@ -180,6 +180,26 @@ async function main() {
           await fs.rm(srcStrip, { force: true }).catch(() => {});
           await fs.rm(patchTile, { force: true }).catch(() => {});
         }
+        // *** THE PHONE MUST LAND IN EMPTY SPACE, NOT ON THE TYPE. ***
+        //
+        // This is the bug the owner called "rusak total", and it has now shipped TWICE — once on the
+        // ad's end card, and once here, where the composited phone landed across the word "number".
+        // The plate is told to reserve a void. codex does not always obey. So MEASURE IT: work out
+        // exactly where the phone will land, look at what is already there, and REFUSE rather than
+        // paste a phone over a headline.
+        const phoneW = Math.round(PHONE_H * 0.481);      // the mockup's aspect
+        const zoneX = Math.round((1080 - phoneW) / 2) + 150;
+        const zoneY = Math.round((1350 - PHONE_H) / 2) + 70;
+        const zone = await convert([file, "-alpha", "remove",
+          "-crop", `${phoneW}x${PHONE_H}+${zoneX}+${zoneY}`, "+repage",
+          "-format", "%[fx:standard_deviation]", "info:"]);
+        const zsd = parseFloat(zone.stdout);
+        if (Number.isFinite(zsd) && zsd > 0.10) {
+          throw new Error(
+            `the closing slide's phone zone (${phoneW}x${PHONE_H} at ${zoneX},${zoneY}) is NOT EMPTY ` +
+            `(stddev ${zsd.toFixed(3)}) — there is type or artwork there, and the phone is about to be ` +
+            `pasted on top of it. Re-roll the plate with the void actually reserved.`);
+        }
         await convert([
           file, "(", CLOSING_PHONE, "-resize", `x${PHONE_H}`, ")",
           "-gravity", "center", "-geometry", "+150+70", "-composite",
