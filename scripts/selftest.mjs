@@ -276,6 +276,9 @@ await test("no generator hardcodes an IG handle (it is surface-derived)", async 
   if (!/IG_HANDLE/.test(src)) throw new Error("gen-carousel.js does not derive the handle from the surface");
   const table = await fs.readFile(path.join(ROOT, "references/surfaces.md"), "utf8").catch(() => "");
   if (!/@ibils\.global/.test(table)) throw new Error("references/surfaces.md does not name the English account");
+  // Indonesian content carries NO handle at all (owner, 2026-07-14) — not @ibils.savy, not a blank.
+  if (!/Indonesian[\s\S]*?NONE/i.test(table)) throw new Error("surfaces.md does not say Indonesian content carries NO handle");
+  if (!/LANG === "id" \? "" :/.test(src)) throw new Error("gen-carousel.js does not drop the handle for Indonesian content");
 });
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
