@@ -346,6 +346,43 @@ async function main() {
   });
 
   // ════════════════════════════════════════════════════════════════════════
+  // LAW 7 — THE AUDIENCE LAW.  A fact must belong to the person reading it.
+  //
+  // This exists because a deck passed EVERY OTHER GATE and was still wrong. It was written in
+  // English for the global account, and every fact in it was Indonesian — Kredivo, Akulaku, OJK,
+  // Rupiah. It was true. It was sourced to primary documents. It was gated clean. And a reader in
+  // London has never heard of Kredivo.
+  //
+  // The owner caught it in one sentence: "Kenapa konten inggris tapi masalahnya masalah indo?"
+  //
+  // A deck can be true, sourced, and perfectly linted, and still be aimed at people who have never
+  // heard of the thing it is about. So: declare the surface, and the facts must match it.
+  const SURFACE = plan.surface || "";
+  const LOCAL_ID = /\bRp\s?[\d.]|\brupiah\b|\bOJK\b|\bKredivo\b|\bAkulaku\b|\bShopee ?PayLater\b|\bIndodana\b|\bAtome\b|\btriliun\b|\bmiliar\b|\bjuta\b/i;
+  if (/global|^carousel-global/i.test(SURFACE)) {
+    const hits = [];
+    plan.slides.forEach((slide, i) => {
+      const t = `${field(slide.brief, "HEADLINE")} ${field(slide.brief, "BODY")}`;
+      const m = t.match(LOCAL_ID);
+      if (m) hits.push(`slide ${i + 1}: "${m[0]}"`);
+    });
+    if (hits.length) {
+      failCount++;
+      console.log(`FAIL deck: surface is "${SURFACE}" (a GLOBAL audience) but ${hits.length} slide(s) ` +
+        `carry Indonesia-only facts:`);
+      hits.slice(0, 4).forEach((h) => console.log(`  - ${h}`));
+      console.log(`  A reader in London does not have a Kredivo account. The deck can be true, sourced ` +
+        `and perfectly gated, and still be aimed at people who have never heard of the thing it is about.`);
+      console.log(`  Either move it to an Indonesian surface, or find facts the audience actually has.`);
+    }
+  }
+  if (!SURFACE) {
+    warnCount++;
+    console.log(`WARN deck: no "surface" declared. State who this is for — the audience law cannot ` +
+      `check facts against an audience that was never named.`);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
   // LAW 1 — THE RECEIPT LAW, at deck level. The gate that replaces the banlist.
   //
   // Every content slide must carry a receipt NO EARLIER SLIDE CARRIED. A restated fact is padding,

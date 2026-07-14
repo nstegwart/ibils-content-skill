@@ -321,6 +321,21 @@ await test("slide count is no longer clamped to 5-8", async () => {
   if (/Math\.min\(8,/.test(src)) throw new Error("the 5-8 clamp is back — the reference runs 6-14 and pads nothing");
 });
 
+await test("AUDIENCE LAW kills a true, sourced, perfectly-gated deck aimed at the wrong people", async () => {
+  // This deck passed EVERY other gate. Every fact was verified against a primary OJK document.
+  // And a reader in London has never heard of Kredivo.
+  const f = await writeJson("wrongaudience.json", {
+    topic: "paylater", mode: "news", kicker: "Ibils", surface: "carousel-global-en",
+    sources: ["OJK"],
+    slides: [
+      { kind: "cover",   brief: 'HEADLINE: "Paylater says 0%. Its disclosure says 10% per 30 days."  BODY: "Kredivo uses Rp2.000.000 as its example."' },
+      { kind: "content", brief: 'HEADLINE: "Miss one payment"  BODY: "Kredivo stacks 4% plus 6% per 30 days, and publishes no cap."' },
+      { kind: "content", brief: 'HEADLINE: "This is not niche"  BODY: "OJK logged Rp30,1 triliun across 31,76 juta accounts in May 2026."' },
+      { kind: "closing", brief: 'HEADLINE: "Know the number"' }]});
+  const out = node([path.join(ROOT, "scripts/lint-plan.js"), f]).stdout;
+  if (!/GLOBAL audience/.test(out)) throw new Error("an Indonesia-only deck shipped to a global surface");
+});
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 await fs.rm(TMP, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
