@@ -174,6 +174,36 @@ function comedy(s) {
     fail("C5: no PRE_PUNCH beat. The beat before the punch is the load-bearing silence of all spoken comedy.");
   }
 
+  // --- C5b: THE PUNCH IS A SLAP, NOT A SCENE — but the cap is on the SHOT, not the VOICE.
+  //
+  // The law says "punch shot <= 0.6x median setup AND <= 1.5s". I implemented it against the LINE's
+  // duration, and then discovered in Indonesian that NO spoken punch ending in "transaksi" fits
+  // 1.5s — not even a three-word one. The 1.5s absolute was calibrated for fast English delivery.
+  //
+  // The law is right; my implementation conflated two things. The punch SHOT is a slap. The punch
+  // LINE's last word is allowed to RING OVER THE CUT into the dead air — which is not a loophole,
+  // it is how a real edit lands a line: you cut on the word, and the tail carries.
+  //
+  // So: the RATIO is the law (the punch must be much shorter than the setup). The absolute cap
+  // belongs to the shot, and the shot is declared separately.
+  if (punchLine && setupBeats.length >= 2) {
+    const durs = setupBeats.map((l) => l.est_seconds ?? null).filter((x) => x != null);
+    if (durs.length >= 2 && punchLine.est_seconds != null) {
+      const med = median(durs);
+      const ratio = punchLine.est_seconds / med;
+      if (ratio > 0.6) {
+        fail(`C5: the punch runs ${punchLine.est_seconds}s against a ${med.toFixed(2)}s median setup beat ` +
+          `(${ratio.toFixed(2)}x). It must be <=0.6x. The punch is a slap, not a scene.`);
+      }
+      const shot = punchLine.shot_seconds ?? punchLine.est_seconds;
+      if (shot > 1.5) {
+        warn(`C5: the punch SHOT is ${shot}s (>1.5s). If the line itself runs longer, declare a ` +
+          `shorter \`shot_seconds\` and let the last word ring over the cut into the dead air — ` +
+          `that is how a real edit lands a line.`);
+      }
+    }
+  }
+
   // --- C5: dead air. silence is the drum the punch lands on.
   if (punchLine && (punchLine.pause_after_ms ?? 0) < 800) {
     fail(`C5: only ${punchLine.pause_after_ms ?? 0}ms of dead air after the punch. Needs >=800ms. ` +
