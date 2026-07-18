@@ -144,6 +144,18 @@ async function finalizeOne(file) {
     file
   ]);
 
+  // Global green is deterministic: erase only the 200x230 logo footprint with
+  // the canonical background colour. Asking an image model to "reserve a logo
+  // zone" repeatedly produced a visible card or full-height sidebar. Important
+  // content is kept out of this box by prompt coordinates; the background and
+  // logo are owned here, not guessed by the model.
+  const globalGreen =
+    String(process.env.CAROUSEL_LANG || "").toLowerCase() === "en" ||
+    ["global-green", "marketing"].includes(String(process.env.CAROUSEL_STYLE || "").toLowerCase());
+  if (globalGreen) {
+    await convert([file, "-fill", "#0E3B33", "-draw", "rectangle 880,0 1079,229", file]);
+  }
+
   // THE RESERVED CORNER CLEAN-CHECK.
   // Owner 2026-07-16: FORCE_LOGO=1 → skip gate, just stamp logo (green typography decks
   // often trip the NE plate detector on solid #0E3B33). Default still guards re-rolls.
@@ -164,7 +176,7 @@ async function finalizeOne(file) {
       "-gravity", "northeast", "-crop", "280x280+0+0", "+repage",
       "-format", "%[fx:standard_deviation]", "info:"]);
     const sd = parseFloat(cnr.stdout);
-    if (Number.isFinite(sd) && sd > 0.13) {
+    if (!globalGreen && Number.isFinite(sd) && sd > 0.13) {
       throw new Error(
         `the reserved top-right corner is NOT empty (stddev ${sd.toFixed(3)}) — codex drew in it, and ` +
         `the logo is about to land on top of that artwork. Re-roll this slide.`);
@@ -182,10 +194,36 @@ async function finalizeOne(file) {
     if ([rr, rg, rb, nr, ng, nb].every(Number.isFinite)) {
       const d = Math.hypot(rr - nr, rg - ng, rb - nb);
       // 0.06 in 0..1 channel space ≈ a clearly different solid plate (item-5408 panel was ~0.09).
-      if (d > 0.06) {
+      if (!globalGreen && d > 0.06) {
         throw new Error(
           `the reserved top-right corner is a solid plate (Δcolour ${d.toFixed(3)} vs left strip) — ` +
           `codex painted a badge/card there. Logo would land on it. Re-roll this slide.`);
+      }
+    }
+
+    // A nearly-same-green sidebar can pass the corner gate because it is both
+    // uniform and close in colour. Measure the middle of the slide, where the
+    // only reserved area is over: a quiet outer strip with a shifted mean is a
+    // generated right rail, not continuous full-bleed background.
+    const railRef = await convert([file, "-alpha", "remove",
+      "-crop", "80x700+760+300", "+repage", "-resize", "1x1!",
+      "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
+    const railEdge = await convert([file, "-alpha", "remove",
+      "-crop", "80x700+1000+300", "+repage", "-resize", "1x1!",
+      "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
+    const railSd = await convert([file, "-alpha", "remove",
+      "-crop", "80x700+1000+300", "+repage",
+      "-format", "%[fx:standard_deviation]", "info:"]);
+    const [ir, ig, ib] = parseRGB(railRef);
+    const [er, eg, eb] = parseRGB(railEdge);
+    const edgeSd = parseFloat(railSd.stdout);
+    if ([ir, ig, ib, er, eg, eb, edgeSd].every(Number.isFinite)) {
+      const railDelta = Math.hypot(ir - er, ig - eg, ib - eb);
+      if (railDelta > 0.018 && edgeSd < 0.05) {
+        throw new Error(
+          `generated right-side rail detected (Δcolour ${railDelta.toFixed(3)}, ` +
+          `edge stddev ${edgeSd.toFixed(3)}) — below y=230 the background must ` +
+          `remain full-width. Re-roll this slide.`);
       }
     }
   }

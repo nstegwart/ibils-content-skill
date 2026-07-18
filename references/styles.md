@@ -25,10 +25,13 @@ Both the logo and the closing-slide phone are composited afterwards by
 !!! ABSOLUTE RULE — READ FIRST !!!
 Do NOT draw a logo, a logo mark, a brand badge, an app-icon badge, or write
 the word 'Ibils' as a wordmark ANYWHERE on this slide. No brand
-name text. No corner badge. The TOP-RIGHT corner area (roughly 280 x 280 px)
-MUST stay plain, empty background — draw nothing there. The real logo is
-composited into the top-right afterwards; if you draw any logo or 'Ibils' text
-the slide is rejected.
+name text. No corner badge. The real logo is composited into the exact FINAL
+1080x1350 zone x=880..1079,y=0..229. Keep text and meaningful graphics outside
+it, but do not design or visually reserve a logo container. Continue the same
+full-canvas background through it. Below y=230 the design remains full width.
+Never draw a sidebar, rail, tab, darker patch, vertical boundary longer
+than 160px, or connect this zone to the slide number. At y=300/500/750/1000,
+x=870 and x=1070 must remain visually continuous.
 ```
 
 ## Block B — REFERENCE (Himel identity)
@@ -83,9 +86,10 @@ restrained, editorial — a finished design asset.
 
 ```
 BRANDING — the slide has NO drawn logo and NO 'Ibils' wordmark. Keep the
-TOP-RIGHT corner empty (the real logo is composited there). Only draw the
-footer: a small handle bottom-left (from references/surfaces.md — English = @ibils.global) and the slide number
-bottom-right.
+logo landing zone x=880..1079,y=0..229 as seamless background, never a panel.
+Render the slide number as plain small type only inside
+x=930..1035,y=1210..1270 with no box/plate behind it. Only draw the footer: a
+small handle bottom-left (English = @ibils.global) and that slide number.
 ```
 
 ---

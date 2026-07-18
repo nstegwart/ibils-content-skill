@@ -125,6 +125,17 @@ await test("finalize cover-crops native 2:3 output instead of adding side rails"
   }
 });
 
+await test("finalize rejects a model-drawn right sidebar", async () => {
+  const dir = path.join(TMP, "drawn-rail"); await fs.mkdir(dir, { recursive: true });
+  const f = path.join(dir, "03-content.png");
+  magick(["-size", "1080x1350", "xc:#0E3B33", "-fill", "#173F38",
+    "-draw", "rectangle 920,0 1079,1349", f]);
+  const r = node([path.join(ROOT, "scripts/finalize.js"), dir]);
+  if (r.status === 0 || !/right-side rail/i.test(r.stdout + r.stderr)) {
+    throw new Error("a full-height generated sidebar passed finalization");
+  }
+});
+
 await test("finalize EXITS NON-ZERO when a slide fails", async () => {
   const dir = path.join(TMP, "broken"); await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "02-broken.png"), "this is not a png");

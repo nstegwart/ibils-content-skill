@@ -43,10 +43,16 @@ const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "m
 const HARD_RULE = [
   "!!! ABSOLUTE RULE — READ FIRST !!!",
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
-  "word 'Ibils' as a wordmark ANYWHERE. No corner badge. The",
-  "top-RIGHT corner (~280x280 px) MUST stay plain empty background — the real",
-  "logo is composited there later. If you draw any logo or 'Ibils' text the",
-  "slide is rejected."
+  "word 'Ibils' as a wordmark ANYWHERE. No corner badge. The real logo is",
+  "composited later. Do not design a logo container or landing zone at all.",
+  "Keep typography and meaningful graphics OUTSIDE x=880..1079,y=0..229, but",
+  "continue the full-canvas background through it as if no logo will exist.",
+  "Do not visually reserve that area: no rectangle, card, badge, tab, darker",
+  "patch, lighter patch, border, notch, vertical bar or rail. Below y=230,",
+  "x=880..1079 remains normal full-width design immediately.",
+  "Never draw a vertical boundary near x=800..1000 longer than 160 pixels.",
+  "Never connect the logo zone to the slide-number area. At y=300,500,750,1000,",
+  "the background at x=870 and x=1070 must be continuous—no sidebar or rail."
 ].join("\n");
 
 const REFERENCE = [
@@ -99,7 +105,9 @@ const FORMAT = [
   "Compose edge-to-edge: the background fills the whole 1080x1350 with no",
   "inner border, frame, sidebar, vertical rail, or empty margin band around",
   "the artwork. The background colour/texture must continue seamlessly to",
-  "all four canvas edges.",
+  "all four canvas edges. Usable poster width remains x=0..1079 everywhere",
+  "except the small logo landing zone x=880..1079,y=0..229. Never turn that",
+  "small corner landing zone into a full-height or partial-height side panel.",
   TEXT_LANG_RULE,
   "No watermark, no signature, no extra text."
 ].join("\n");
@@ -130,8 +138,10 @@ const NOT_AI = [
 ].join("\n");
 
 const BRANDING =
-  "BRANDING — draw NO logo and NO 'Ibils' wordmark. Top-RIGHT corner stays " +
-  "empty (the logo is composited there). Footer: " +
+  "BRANDING — draw NO logo, logo container, or 'Ibils' wordmark. Keep text and " +
+  "meaningful graphics outside x=880..1079,y=0..229, but do NOT visually reserve it. " +
+  "Slide number is plain small type only inside x=930..1035,y=1210..1270, " +
+  "with NO box, tab, plate or coloured block behind it. Footer: " +
   (IG_HANDLE
     ? "a small '" + IG_HANDLE + "' handle bottom-left and the slide number bottom-right."
     : "NO handle at all — bottom-left stays EMPTY. Only the slide number, bottom-right.");
