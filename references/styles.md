@@ -48,8 +48,11 @@ slide asks for.
 
 ```
 FORMAT — vertical Instagram carousel slide, portrait 4:5, canvas EXACTLY
-1080 x 1350 pixels. SAFE MARGIN: keep ALL text, the footer handle, the slide
-number and the mascot's head/crown at least 9% inside every edge.
+1080 x 1350 pixels. Native generation may return a taller 2:3 canvas, so keep
+the top and bottom 12% as background-only bleed for a safe centre 4:5 crop.
+Keep ALL text, footer, slide number, mascot, props and meaningful artwork
+inside the central safe area and at least 8% inside the left/right edges.
+Background must remain full-bleed with no inner frame, sidebar or vertical rail.
 All text is set INTO the design as real typography, spelled EXACTLY, in
 ENGLISH. No watermark, no signature, no extra text.
 ```
@@ -112,19 +115,22 @@ warm cream, deep sage green, soft amber, muted ink. Restrained and premium —
 NOT a busy kids template, NO blobby speech bubbles. Himel as a clean B&W inset.
 ```
 
-### marketing
+### marketing  (== GLOBAL default visual — owner 2026-07-16)
 ```
-VISUAL STYLE — bold, clean, modern FINTECH-AD poster. ONE confident solid
-background (solid deep Ibils green OR solid cream — never muddy gradients). A
-big crisp headline in clean bold type with strong hierarchy. ONE single accent
-only — one tidy halftone-dot patch OR one starburst. Flat, disciplined, high
-contrast, lots of intentional negative space. Palette: deep Ibils green, bright
-amber/yellow, cream, black. Premium like a polished app campaign — NOT a noisy
-comic explosion. Himel as a clean B&W inset.
-NO fabricated app UI — no phone showing a fake dashboard/charts/buttons. A
-phone may show ONLY the Ibils splash (green + iB logo + 'Ibils'). Prefer
-illustrating the user's benefit or Himel's real action over drawing a phone.
-Use only real features from references/ibils-app.md.
+VISUAL STYLE — bold clean modern FINTECH-AD / GLOBAL IG poster.
+Background is ALWAYS solid deep Ibils green #0E3B33 full-bleed edge-to-edge
+(NEVER cream paper, NEVER white field, NEVER muddy gradient).
+Large cream/off-white (#FBF6E9) headline type, strong hierarchy.
+Numbers and key stats in bright amber #F2A93B.
+At most ONE small amber halftone-dot accent.
+Flat, disciplined, high contrast, lots of intentional negative space.
+Typography-first editorial poster — premium app-campaign look.
+Palette ONLY: deep green #0E3B33, cream #FBF6E9, amber #F2A93B, black.
+Reference SSOT (look, not copy): samples/carousel green typography deck
+(no mascot on content; phone+app on closing via finalize).
+NO fabricated app UI on content slides. Closing phone is COMPOSITED later
+(assets/closing-phone.png) — do not draw a phone on the raw plate when
+Himel is present on closing; leave centre-right void.
 ```
 
 ### insight
@@ -134,6 +140,12 @@ ink linework, heavy screentone halftone shading, dramatic speed lines, slightly
 aged off-register print texture. Palette: deep Ibils green (#0E3B33), warm cream
 (#FBF6E9), amber (#F2A93B), black ink. Himel is fully at home in the artwork.
 ```
+
+### global-green (alias of marketing for surface carousel-global)
+Same block as **marketing** above. Generators may set `mode: marketing` **or**
+resolve style from `surface: carousel-global` → this green typography style even
+when `mode` is education/insight for copy taxonomy.
+
 
 ---
 
@@ -170,8 +182,8 @@ carousel. Himel stays the identical B&W manga character — only the pose change
 
 ## After generation — finalise
 
-Run `node scripts/finalize.js <slides-dir>`. It pads every slide to an exact
-1080x1350 4:5 frame (no crop) and composites the real Ibils App Store icon
+Run `node scripts/finalize.js <slides-dir>`. It cover-crops every slide to an
+exact 1080x1350 4:5 frame (never pads side rails) and composites the real Ibils App Store icon
 (`assets/ibils-logo-card.png` — the teal-gradient rounded-square with the white
 iB mark; a 512px source rendered at 128px) into the TOP-RIGHT corner. On the
 closing slide it also composites the iPhone splash mockup

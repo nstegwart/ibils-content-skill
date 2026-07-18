@@ -35,6 +35,8 @@ if (!PLAN_PATH || !process.argv[3]) {
   process.exit(1);
 }
 const OUT_DIR = path.resolve(process.argv[3]);
+const IMAGE_MODEL = process.env.CAROUSEL_IMAGE_MODEL || "gpt-5.3-codex-spark";
+const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "medium";
 
 // ---- fixed prompt blocks (operative copy — see references/styles.md) ------
 
@@ -74,20 +76,42 @@ const EXPRESSION = [
   "matching expression."
 ].join("\n");
 
+const TEXT_LANG_RULE =
+  LANG === "id"
+    ? "All text is real typography, spelled EXACTLY as written in the brief, in BAHASA INDONESIA. Do NOT translate to English."
+    : "All text is real typography, spelled EXACTLY, in ENGLISH.";
+
 const FORMAT = [
   "FORMAT — vertical Instagram carousel slide, portrait 4:5, exactly 1080x1350.",
-  "SAFE MARGIN — EVERY important element must sit at least 8% inside every",
-  "edge: all text, the footer, the kicker, AND the COMPLETE mascot — his whole",
-  "body, both arms, both hands, both boots, crown and cape — plus every prop he",
-  "holds. NOTHING may be clipped by the canvas edge: not an arm, not a hand,",
-  "not a held object, not a boot, not a letter. If the mascot or a prop does",
-  "not fit, draw them SMALLER so the whole figure is inside the frame — a",
-  "cut-off mascot or cropped prop means the slide is rejected.",
+  "NATIVE OUTPUT SAFETY — the image tool may return a taller 2:3 canvas even",
+  "when asked for 4:5. Compose for a centre 4:5 crop: keep the TOP and BOTTOM",
+  "12% as background-only bleed with no text, footer, number, face, prop, or",
+  "meaningful artwork. Never solve this with an inner frame or side rails.",
+  "SAFE MARGIN — EVERY important element must sit at least 8% inside the LEFT",
+  "and RIGHT edges, and inside that central vertical safe area: all text, the",
+  "footer, the kicker, AND (when present) the COMPLETE",
+  "mascot — his whole body, both arms, both hands, both boots, crown and cape",
+  "— plus every prop he holds. NOTHING may be clipped by the canvas edge:",
+  "not an arm, not a hand, not a held object, not a boot, not a letter. If the",
+  "mascot or a prop does not fit, draw them SMALLER so the whole figure is",
+  "inside the frame — a cut-off mascot or cropped prop means the slide is",
+  "rejected.",
   "Compose edge-to-edge: the background fills the whole 1080x1350 with no",
-  "inner border, frame, or empty margin band around the artwork.",
-  "All text is real typography, spelled EXACTLY, in ENGLISH.",
+  "inner border, frame, sidebar, vertical rail, or empty margin band around",
+  "the artwork. The background colour/texture must continue seamlessly to",
+  "all four canvas edges.",
+  TEXT_LANG_RULE,
   "No watermark, no signature, no extra text."
 ].join("\n");
+
+/** Pose strings that mean: typography-only slide, no Himel mascot. */
+function isNoHimelPose(pose) {
+  const p = String(pose || "").trim().toLowerCase();
+  if (!p) return true;
+  return /^(none|no|no-himel|no himel|text-only|text only|without himel|tanpa himel|kosong)$/i.test(
+    p
+  ) || /^no\s*mascot/i.test(p);
+}
 
 const NO_INVENT = [
   "DATA HONESTY — use ONLY the words and figures in this slide's copy. Do NOT",
@@ -137,6 +161,18 @@ const NO_FAKE_UI = [
   "real action, or a simple symbolic object — not a screen."
 ].join("\n");
 
+// Solid deep-green typography (GLOBAL IG SSOT — samples/carousel slides).
+const STYLE_GLOBAL_GREEN =
+  "VISUAL STYLE — GLOBAL IG FINTECH poster (owner 2026-07-16). Background is " +
+  "ALWAYS solid deep Ibils green #0E3B33 full-bleed edge-to-edge (NEVER cream " +
+  "paper, NEVER white, NEVER muddy gradient). Large cream/off-white (#FBF6E9) " +
+  "headline type, strong hierarchy. Numbers/key stats in bright amber #F2A93B. " +
+  "At most ONE small amber halftone-dot accent. Flat, disciplined, high " +
+  "contrast, lots of intentional negative space. Typography-first editorial " +
+  "poster — premium app-campaign look. Palette ONLY: deep green #0E3B33, cream " +
+  "#FBF6E9, amber #F2A93B, black. Match the look of the green typography " +
+  "reference deck (type-led; no clutter).";
+
 const STYLES = {
   news:
     "VISUAL STYLE — vintage financial NEWSPAPER / broadsheet. Aged off-white " +
@@ -152,12 +188,8 @@ const STYLES = {
     "(marker highlight or hand-underline). Body in ONE crisp note card, thin " +
     "border, soft shadow. At most 2-3 small tidy doodle accents. Pastel: warm " +
     "cream, sage green, soft amber. Restrained and premium.",
-  marketing:
-    "VISUAL STYLE — bold clean modern FINTECH-AD poster. ONE solid background " +
-    "(solid deep Ibils green OR solid cream). Big crisp headline, strong " +
-    "hierarchy. ONE accent only — one halftone-dot patch or one starburst. " +
-    "Flat, disciplined, high contrast, lots of negative space. Palette: deep " +
-    "Ibils green, bright amber/yellow, cream, black.",
+  marketing: STYLE_GLOBAL_GREEN,
+  "global-green": STYLE_GLOBAL_GREEN,
   insight:
     "VISUAL STYLE — artistic RETRO MANGA, 1980s-90s manga-magazine look. Bold " +
     "black ink linework, heavy screentone halftone shading, dramatic speed " +
@@ -165,21 +197,94 @@ const STYLES = {
     "warm cream #FBF6E9, amber #F2A93B, black ink."
 };
 
+/** Owner 2026-07-16: carousel-global / EN → always solid deep-green typography style. */
+function resolveStyle(plan) {
+  const surface = String(plan.surface || "").toLowerCase();
+  const lang = String(process.env.CAROUSEL_LANG || "").toLowerCase();
+  const forceGreen =
+    process.env.CAROUSEL_STYLE === "global-green" ||
+    process.env.CAROUSEL_STYLE === "marketing" ||
+    surface.includes("global") ||
+    lang === "en";
+  if (forceGreen) return STYLE_GLOBAL_GREEN;
+  return STYLES[plan.mode] || STYLES.news;
+}
+
 function buildPrompt(slide, plan, total) {
-  const style = STYLES[plan.mode] || STYLES.news;
+  const style = resolveStyle(plan);
+  const noHimelPose = isNoHimelPose(slide.pose);
+  // Closing uses the hardened two-column plate from the current pipeline:
+  // type left, device right, no mascot collision risk.
+  const noHimel = slide.kind === "closing" || noHimelPose;
   const lines = [
     "Use your built-in NATIVE image-generation tool directly (no API key, no",
     "imagegen skill, no python). Generate ONE complete, finished Instagram",
-    "carousel SLIDE as a single image — headline, body text and mascot designed in.",
-    "", HARD_RULE, "", REFERENCE, "", EXPRESSION, "", style, "", BRANDING,
+    "carousel SLIDE as a single image — headline, body text" +
+      (noHimel ? " designed in. NO mascot character." : " and mascot designed in."),
+    "",
+    HARD_RULE,
+    "",
+  ];
+
+  if (noHimel) {
+    lines.push(
+      "NO MASCOT ON THIS SLIDE (owner intermittent-Himel / global type-only pattern).",
+      "Do NOT draw Himel, any child-king mascot, crown character, manga boy,",
+      "cartoon figure, or person as the main illustration subject.",
+      "Typography + editorial graphic only: bold headline, body copy, simple",
+      "icons/shapes/charts that fit the message. Full-bleed background texture",
+      "in style. Leave top-RIGHT ~280x280 empty for logo composite.",
+      "",
+      style,
+      "",
+      BRANDING,
+    );
+  } else {
+    lines.push(
+      REFERENCE,
+      "",
+      EXPRESSION,
+      "",
+      style,
+      "",
+      BRANDING,
+    );
+  }
+
+  lines.push(
     `Kicker / section label — render it EXACTLY as written, keep this mixed`,
     `case, do NOT uppercase it: "${plan.kicker}".`,
-    "", FORMAT, "", NO_INVENT, "", NOT_AI, "", PROP_RULE, "", NO_FAKE_UI, "",
-    RELEVANCE, "",
+    "",
+    FORMAT,
+    "",
+    NO_INVENT,
+    "",
+    noHimel
+      ? "QUALITY BAR — human-designed poster, crisp type, real grid, even margins; no AI smudges; no empty placeholder boxes."
+      : NOT_AI,
+    "",
+  );
+  if (!noHimel) {
+    lines.push(PROP_RULE, "", NO_FAKE_UI, "", RELEVANCE, "");
+  } else {
+    lines.push(NO_FAKE_UI, "", RELEVANCE, "");
+  }
+
+  lines.push(
     `THIS SLIDE (${slide.kind}, ${slide.idx} of ${total}):`,
     slide.brief,
-    `HIMEL POSE — draw him FRESH in this pose, do NOT copy a reference pose: ${slide.pose}.`
-  ];
+  );
+
+  if (noHimel) {
+    lines.push(
+      "HIMEL: ABSENT — do not draw him. This is a text/graphic-only slide."
+    );
+  } else {
+    lines.push(
+      `HIMEL POSE — draw him FRESH in this pose, do NOT copy a reference pose: ${slide.pose}.`
+    );
+  }
+
   if (slide.kind === "cover") {
     lines.push("This is a COVER — headline only, no body paragraph, no empty placeholder card.");
   }
@@ -224,13 +329,14 @@ function buildPrompt(slide, plan, total) {
 function runCodex(slide, plan, total) {
   return new Promise((resolve) => {
     const out = path.join(OUT_DIR, `${slide.name}.png`);
-    const imgs = [...HIMEL_REFS];
+    const noHimel = slide.kind === "closing" || isNoHimelPose(slide.pose);
+    const imgs = noHimel ? [] : [...HIMEL_REFS];
     const iArgs = [];
     for (const img of imgs) iArgs.push("-i", img);
     const args = [
       "exec",
-      "-m", "gpt-5.5",
-      "-c", 'model_reasoning_effort="medium"',
+      "-m", IMAGE_MODEL,
+      "-c", `model_reasoning_effort="${IMAGE_REASONING_EFFORT}"`,
       "--dangerously-bypass-approvals-and-sandbox",
       "--skip-git-repo-check", ...iArgs, "-C", OUT_DIR, "-"
     ];

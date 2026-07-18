@@ -7,12 +7,25 @@ This file exists because 48 of the 64 English slides in the first batch were ren
 `references/styles.md`, and the skill had no concept of a *surface* at all — so it could not possibly
 have got this right, and would have got it wrong again on the next run.
 
-| surface | language / register | handle |
-|---|---|---|
-| **Carousel** — global IG | **English** | **`@ibils.global`** |
-| **Reels** — global IG | **English** | **`@ibils.global`** |
-| **Indonesian content** | Bahasa Indonesia, Jakarta Gen-Z (`lo/gue`) | **NONE — no handle at all** |
-| **Paid video ads** | Bahasa Indonesia (`lo/gue`) | **NONE** — the ad points at the landing page. No handle, **no store badges**. |
+| surface | language / register | handle | logo card |
+|---|---|---|---|
+| **Carousel** — global IG | **English** | **`@ibils.global`** | **Deep green `#0E3B33`** `ibils-logo-card-global.png` (Figma Logo Global) |
+| **Reels** — global IG | **English** | **`@ibils.global`** | same deep green |
+| **Indonesian content** | Bahasa Indonesia, Jakarta Gen-Z (`lo/gue`) | **NONE — no handle at all** | Deep green primary (same mark). Teal backup: `ibils-logo-card-id-teal.png` via `CAROUSEL_LOGO=teal` |
+| **Paid video ads** | Bahasa Indonesia (`lo/gue`) | **NONE** — the ad points at the landing page. No handle, **no store badges**. | app teal splash ok |
+
+### Logo law (owner 2026-07-16)
+
+- **One mark** (white iB hex). **Deep green `#0E3B33`** is the assigned carousel logo for **all** carousels unless overridden.
+- `finalize.js` resolves via `CAROUSEL_LOGO=global|teal|path` or defaults to deep green `ibils-logo-card.png`.
+- Do **not** invent a second brand color system for global vs indo — only thin surface differences (handle, language, content register).
+
+### Global content register (owner 2026-07-16)
+
+- Voice = **friend retelling** (YouTube podcast energy): spoken, blunt, concrete receipts — **not** AI staccato closings.
+- **Angle = EXPERIENCE position always** — lived scene + wrong belief (gold **5702 · 5703 · 5704 · 5708**). Not lecture titles. Full law: `writing-global-en.md`.
+- English surface: you + contractions; Indonesian surface: lo/gue. Same spine: product + wrong belief + mechanism.
+- Closings = 2–5 words **this story only**. Ban empty pairs like `WAKTU KURANG` → **`WAKTU BERKURANG`** (`id-collocation-ban.json`).
 
 ## The law
 

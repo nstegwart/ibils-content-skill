@@ -60,6 +60,17 @@ highlighted phrases + artifact) that forms a complete claim on its own, and a fu
 argument — never a pile. `[HUMAN]` **The swap probe:** exchange any two adjacent content slides. If
 nothing breaks, there is no spine. Cut one.
 
+**LAW 7 — THE ETHICS LAW (kode etik script).** *Right thrift, right spend — both languages.*  
+**SSOT (baca dulu, sebelum draft):** `references/kode-etik-script.md` — Gate #0, checklist E1–E7.  
+A script must not preach cheapness as a religion and must not romanticize spending as identity.
+- **Hemat di tempat yang harus hemat** (langganan mati, sampah keranjang, minimum-payment theater).
+- **Jangan hemat di tempat yang harus diganti / dibayar penuh** (alat harian tumpul, safety, bunga
+  yang memanjang, denda yang numpuk).
+- Owner canon: *gunting udah tumpul masih lo pakai — padahal lo pakai tiap hari. Itu murah palsu.*
+- Kill **sunk-cost virtue** (udah bayar → wajib dipaksa pakai). Frequency × consequence decides.
+- Voice / anti-slop after ethics: `references/voice-no-slop.md` + `lint-voice.js`.
+- **Lint hijau tidak mengampuni langgar kode etik** — rewrite angle, jangan ship.
+
 ---
 
 ## WHAT WE DELETED, AND WHY
@@ -312,17 +323,13 @@ The content plan codex writes (before image generation) is JSON:
 - `brief`: the exact English copy + layout hint for that slide. Spell text
   verbatim — it is set into the design letter for letter.
 - `pose`: Himel's context-matched action, written in English — must differ
-  slide to slide and fit the slide's meaning.
-  - EXPRESSION RULE: every `pose` MUST state Himel's facial expression, and it
-    must match the slide's mood — "anxious, wary expression" on a warning,
-    "firm expression" on a correction, "serious, grim expression" on a hard or
-    dark truth (debt, panic, money running out), a smile ONLY on a genuinely
-    positive slide. Never leave the expression unstated; never write a smiling
-    Himel on a slide about debt, panic, or loss.
-  - PROP RULE: if the pose has Himel hold a document, receipt, bill, list,
-    card, phone or chart, write the pose as him PRESENTING it to the viewer
-    ("holding it up / showing it, facing the camera"). Never write a reading
-    pose — "reading it / looking down at it" — that turns the prop's content
-    away from the audience.
-</content>
-</invoke>
+  slide to slide and fit the slide's meaning **when Himel is present**.
+  - **Intermittent Himel** (owner): set `pose` to `none` / `no-himel` /
+    `text-only` on slides without the mascot. Example pattern: cover has Himel,
+    next 2 slides typography-only, then Himel again (`gen-carousel.js` skips
+    Himel refs when pose is none). Closing uses no Himel: headline left and phone composite right.
+  - EXPRESSION RULE: every Himel `pose` MUST state facial expression matching
+    the slide's mood — "anxious, wary" on a warning, "firm" on a correction,
+    "serious, grim" on debt/panic; smile ONLY on a genuinely positive slide.
+  - PROP RULE: if Himel holds a document/receipt/phone, write him PRESENTING
+    it to the viewer — never a reading pose that turns content away.

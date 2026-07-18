@@ -22,7 +22,9 @@ const APP_ICON = "/Users/user/Project/ibils-orchestrator/ibils-budget-tracker/re
 
 // device geometry (2x the old asset, so it downsamples crisp instead of upscaling soft)
 const W = 820, H = 1660;          // body
-const PAD = 200;                  // room for the shadow
+// PAD is only anti-alias room for rounded corners — NOT a drop-shadow cushion.
+// Owner 2026-07-15: no soft shadow behind the phone frame on carousel closings.
+const PAD = 24;
 const BEZEL = 26;                 // black frame around the glass
 const R_BODY = 118;               // body corner radius
 const R_SCREEN = R_BODY - BEZEL + 4;
@@ -157,14 +159,13 @@ async function main() {
   //    composite makes ImageMagick adopt a grayscale working colourspace for the WHOLE stack, and
   //    every layer on top of it — including the teal screen — comes out silently DESATURATED. It
   //    shipped grey once.
-
   // 8. assemble — base canvas is explicitly sRGB
   await sh(["-size", `${CW}x${CH}`, "xc:none", "-colorspace", "sRGB",
     p("body2"), "-geometry", `+${X}+${Y}`, "-composite",
     p("screen3"), "-geometry", `+${SX}+${SY}`, "-composite",
     "-colorspace", "sRGB", p("phone")]);
 
-  // 9. dynamic island — drawn LAST, on top of the glass
+  // 8. dynamic island — drawn LAST, on top of the glass
   const IW = Math.round(SW * 0.30), IH = Math.round(IW * 0.30);
   const IX = SX + Math.round((SW - IW) / 2), IY = SY + Math.round(SH_ * 0.022);
   await sh([p("phone"), "-fill", "#08090A", "-draw",

@@ -140,17 +140,26 @@ const TEASER = [
 // Concrete instruction verbs — a content body should usually tell you to DO
 // something. Matched loosely (prefix/suffix tolerant).
 const ACTION_ROOTS = [
+  // EN
   "log", "write", "open", "check", "review", "set aside", "move", "pick",
   "compare", "flag", "stop", "count", "add", "split", "delay", "cut",
   "buy", "cook", "save", "share", "separate", "sort", "install",
   "track", "cap", "collect", "switch", "turn off", "delete", "swap", "start",
-  "pay", "tidy", "cancel", "unsubscribe", "screenshot", "forward", "send"
+  "pay", "tidy", "cancel", "unsubscribe", "screenshot", "forward", "send",
+  // ID — otherwise good Bahasa bodies false-fail as "abstract"
+  "buka", "tulis", "catat", "cek", "hitung", "bandingkan", "pindah", "stop",
+  "bayar", "screenshot", "hapus", "set", "atur", "sisip", "sisih", "potong",
+  "transfer", "lunasi", "naikin", "turunin", "matikan", "aktifkan", "screenshot"
 ];
 
 // Concrete number / time signals.
-const NUMBER_RE = /\d|\brp\b|percent|%|a month|a week|a day|daily|weekly|monthly|every day|every week|every month|weekend|payday|per month|per week/i;
+const NUMBER_RE = /\d|\brp\b|percent|%|a month|a week|a day|daily|weekly|monthly|every day|every week|every month|weekend|payday|per month|per week|sebulan|seminggu|setahun|tiap gajian|setiap gajian|hari gajian/i;
 // Cause / mechanism / purpose connectors — mark an explanatory concrete body.
-const MECHANISM = ["because", "since", "when", "so that", "which means", "that's why", "as a result", "after"];
+const MECHANISM = [
+  "because", "since", "when", "so that", "which means", "that's why", "as a result", "after",
+  // ID
+  "karena", "biar", "supaya", "makanya", "setelah", "sebelum", "jadi ", "artinya", "yang artinya"
+];
 
 function field(brief, name) {
   const m = String(brief || "").match(new RegExp(`${name}:\\s*"([^"]*)"`, "i"));
@@ -404,9 +413,11 @@ async function main() {
       const fresh = [...tokens].filter((t) => !seen.has(t));
       if (!fresh.length) {
         // a concrete causal mechanism is a legitimate receipt when no number is to hand.
-        // Capped at 2 per deck — past that you are describing, not reporting.
+        // Owner 2026-07-17: cap raised 2->6 — human-experience decks lean on cause/effect
+        // narrative ("because... after... when...") more than digits, and the old cap of 2
+        // forced a deck back toward numbers once it ran out of mechanism slots.
         const isMech = MECH_RE.test(b) && b.split(/\s+/).length >= 8;
-        if (isMech && mechUsed < 2) {
+        if (isMech && mechUsed < 6) {
           mechUsed++;
         } else {
           failCount++;
@@ -424,11 +435,13 @@ async function main() {
   if (contentSlides >= 3) {
     const numPct = withNumber / contentSlides;
     const entPct = withEntity / contentSlides;
-    if (numPct < 0.5) {
-      failCount++;
-      console.log(`FAIL deck: only ${Math.round(numPct * 100)}% of content slides carry a FIGURE (need >=50%).`);
-      console.log(`  - The reference account is at ~100%. A deck with no numbers in it is opinion, not reporting.`);
-    }
+    // Owner 2026-07-17: the hard >=50%-figures FAIL is removed. It was steering every deck toward
+    // a dollar-amount-led headline because a figure was the cheapest way to pass — readers are
+    // tired of it and the owner wants decks that lead with a lived experience (a life stage, a
+    // scarce resource, a moment), with numbers as supporting evidence in the body, not the hook.
+    // Law 1 (the receipt law, above) still blocks empty/padded slides via entity/quote/mechanism,
+    // so this isn't a return to unverifiable copy — it's removing the NUMBER-specifically quota.
+    void numPct;
     if (entPct < 0.3) {
       warnCount++;
       console.log(`WARN deck: only ${Math.round(entPct * 100)}% of content slides name a real thing (aim >=30%).`);

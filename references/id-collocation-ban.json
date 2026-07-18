@@ -1,0 +1,38 @@
+{
+  "$schema_note": "Hard-FAIL ID collocations for lint-voice.js. Owner nit → append here → never ships again. Patterns are JS RegExp source (case-insensitive). Use negative lookahead so correct forms still pass.",
+  "updated": "2026-07-15",
+  "rules": [
+    {
+      "id": "tiap-gaji-not-gajian",
+      "owner": "2026-07-15 — TIAP GAJI WTF → TIAP GAJIAN",
+      "pattern": "\\b(tiap|setiap)\\s+gaji(?!an)\\b",
+      "fix": "tiap gajian / setiap gajian (momen potong/transfer). 'gaji' OK hanya untuk nominal/slip (gaji Rp6jt, 10% gaji, sisa gaji).",
+      "example_bad": "LO KIRIM RP1JT KE ORTU TIAP GAJI",
+      "example_good": "LO KIRIM RP1JT KE ORTU TIAP GAJIAN"
+    },
+    {
+      "id": "hari-gaji-not-gajian",
+      "owner": "2026-07-15 — same family as tiap gajian",
+      "pattern": "\\bhari\\s+gaji(?!an)\\b",
+      "fix": "hari gajian",
+      "example_bad": "transfer di hari gaji",
+      "example_good": "transfer di hari gajian"
+    },
+    {
+      "id": "pas-gaji-not-gajian",
+      "owner": "2026-07-15",
+      "pattern": "\\bpas\\s+gaji(?!an)\\b",
+      "fix": "pas gajian",
+      "example_bad": "pas gaji lo transfer",
+      "example_good": "pas gajian lo transfer"
+    },
+    {
+      "id": "waktu-kurang-not-berkurang",
+      "owner": "2026-07-16 — AI slop closing: WAKTU KURANG → WAKTU BERKURANG",
+      "pattern": "\\bwaktu\\s+kurang\\b(?!\\s+dari)",
+      "fix": "waktu berkurang (proses/hasil). 'waktu kurang' kedengeran AI staccato.",
+      "example_bad": "UANG BISA NYUSUL. WAKTU KURANG.",
+      "example_good": "UANG BISA NYUSUL. WAKTU BERKURANG."
+    }
+  ]
+}

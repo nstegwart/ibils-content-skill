@@ -47,51 +47,94 @@ the OpenAI Image API. No `OPENAI_API_KEY` is needed.
   `education` / `marketing` / `insight` (which are evergreen, not news-bound),
   skip the fetch and use the user's brief as the source material.
 
-### 2. Read the rules
+### 2. Read the rules (order is mandatory)
 
-Read `references/content-rules.md` in full. It is non-negotiable — especially
-no hallucination and source citation. For `marketing` mode, also read
-`references/ibils-app.md` — marketing copy may only use the real features
-listed there, and must never draw a fabricated app screen.
+1. **`references/kode-etik-script.md` first (Gate #0)** — silent ethics.
+2. **`references/surfaces.md`** — surface → language → handle → **logo** (ID vs global).
+3. **`references/RULE-SCRIPT.md`** — **SSOT hard law nulis** (cover sebut APA / product, triple gate, gold **5401–5407** + YouTube friend **5601–5622**). **No draft without this.**
+4. **Surface split:**
+   - **`carousel-id` (Indo):** `references/writing-research-id.md` + lo/gue + Rp/OJK. Gold **5401–5407**, **5601–5622**.
+   - **`carousel-global` (EN global):** **`references/writing-global-en.md`** — **EXPERIENCE position** always (lived scene + wrong belief), friend retell, **not US-only**. Gold bar **5702 · 5703 · 5704 · 5708** (full pilot 5701–5710).
+5. `references/content-rules.md` in full — no hallucination, Law 1–7.
+6. `references/knowledge-bar.md` — real knowledge (named fact + mechanism); tips kosong = fail.
+7. `references/voice-no-slop.md` + `id-collocation-ban.json` — anti AI-slop + kolokasi (incl. **WAKTU BERKURANG**).
+8. Gold bar (imitate spirit): ID `5101–5120` + **`5401–5407`** + **`5601–5622`**; EN **`5701–5710`** (prefer over legacy 5201 for voice).
+9. `references/diversity-matrix.md` — multi-angle + urgensi orang umum / global household.
+10. For `marketing` / app soft-tie: `references/ibils-app.md` — real features only; never fake UI.
+11. **`references/styles.md`** — global IG visual = **solid deep green typography** (`marketing` / `global-green`).
 
 ### 3. Write the content plan
 
 Produce the plan JSON described in `content-rules.md` §6: a cover, `count`
 content slides, a closing. Save it as `<outdir>/plan.json`.
-- Copy in natural ENGLISH (the IG account is global), following the WRITING FORMULA in
-  `content-rules.md` §4 — every body adds new concrete information.
+
+**Surface (hard):**
+- Indo → `surface: "carousel-id"`, Bahasa lo/gue, **no footer handle**.
+- Global → `surface: "carousel-global"`, **global English** (UK/EU/AU/SG-friendly — not America-default), handle `@ibils.global` via gen LANG=en.
+
+**Voice (both):** friend retelling a money podcast — product + wrong belief + mechanism.  
+Every body adds **new** concrete information (content-rules §4). No AI staccato closings.
+
+**Pose pattern for GLOBAL green style (default ship path):**
+- Cover + content: prefer `pose: "none"` (typography-only deep green).
+- Closing: no Himel. Use the hardened two-column plate: headline left, phone
+  composite right, centred store badges below.
+
 - Every factual claim traces to a fetched article; fill the `sources` array.
-- Each slide gets a `brief` (verbatim copy + layout hint) and a `pose` (Himel's
-  context-matched action — different on every slide).
-- Vary content-slide layouts (statement / list / one-big-number / step).
+- Each slide gets a `brief` (verbatim copy + layout hint) and a `pose`.
+- Vary content-slide layouts (statement / list / one-big-number / step) without template farms.
 
-### 3b. Lint the copy — mandatory gate
+### 3b. Lint the copy — mandatory triple gate
 
-Run: `node ~/.codex/skills/ibils-carousel/scripts/lint-plan.js <outdir>/plan.json`
+```
+node <skill>/scripts/lint-plan.js    <outdir>/plan.json   # receipts / figures / deferral
+node <skill>/scripts/lint-voice.js   <outdir>/plan.json   # anti AI-slop + cover product + kolokasi
+node <skill>/scripts/lint-quality.js <outdir>/plan.json --min-score 5  # named density / body / cover nerve
+```
 
-If it prints any FAIL, the copy is not good enough — rewrite the flagged
-headline/body following the §4 formula, then re-run until it prints `clean`.
-Address WARN lines too. Step 4 is hard-gated on this: `gen-carousel.js` runs
-the linter itself and refuses to render a plan that fails. Never skip it.
+All must print `clean`. If any FAILs, rewrite against **`RULE-SCRIPT.md`** + `voice-no-slop.md` +
+content-rules Law 1/7, then re-run. Never skip. Script-only factory hard-gates on **all three**.
+
+Human ethics self-check (Law 7) is not fully machine-checkable — still required
+before ship (gunting tumpul / false thrift / sunk-cost virtue).
 
 ### 4. Generate the slides
 
-Run:
-`node ~/.codex/skills/ibils-carousel/scripts/gen-carousel.js <outdir>/plan.json <outdir>/slides`
+```bash
+# Indo
+CAROUSEL_LANG=id node scripts/gen-carousel.js <outdir>/plan.json <outdir>/slides
 
-It renders every slide by spawning `codex exec` per slide with the four Himel
-pose references ATTACHED (`-i`). This is the ONLY reliable way to lock the
-mascot's identity. Do NOT generate slides with the in-session native image
-tool — it cannot honour reference images and Himel drifts off-model (wrong
-character, broken anatomy). `references/styles.md` documents the prompt blocks;
-`gen-carousel.js` is their executable form.
+# Global EN (forces deep-green typography style + @ibils.global handle)
+CAROUSEL_LANG=en node scripts/gen-carousel.js <outdir>/plan.json <outdir>/slides
+```
+
+`gen-carousel.js` resolves visual style from **surface / CAROUSEL_LANG**:
+- **global / en → solid deep green `#0E3B33` typography style** (owner 2026-07-16).
+- ID modes keep news/education/insight blocks unless overridden with `CAROUSEL_STYLE=global-green`.
+
+It spawns `codex exec` per slide; Himel refs attached (`-i`) only when pose is not
+`none` / `no-himel`. Do NOT use in-session native image for multi-slide decks.
+`references/styles.md` documents the prompt blocks; `gen-carousel.js` is executable.
 
 ### 5. Finalise
 
-Run `node scripts/finalize.js <outdir>/slides`. This pads every slide to an
-exact 1080x1350 4:5 frame (no content cropped) and composites the fixed
-Ibils App Store icon into the TOP-RIGHT corner. On the closing slide it also
-composites the Play Store / App Store badges along the bottom strip.
+```bash
+# Default logo = deep green global mark (ibils-logo-card.png)
+node scripts/finalize.js <outdir>/slides
+
+# Optional: teal ID backup
+CAROUSEL_LOGO=teal node scripts/finalize.js <outdir>/slides
+
+# Optional: stamp logo even if NE corner is busy (owner: logo dibiarkan)
+FORCE_LOGO=1 node scripts/finalize.js <outdir>/slides
+```
+
+Cover-crops every slide to exact 1080x1350 and composites the logo TOP-RIGHT
+(non-closing). Never pad a 2:3 native render: padding creates solid side rails
+and shrinks the poster. The generation prompt reserves 12% top/bottom bleed so
+the crop is safe.
+Closing: hardened two-column plate, phone splash on the right, centred store
+badges, and no Himel.
 
 ### 6. Verify before reporting
 
@@ -153,3 +196,7 @@ mascot, garbled art) or wrong copy.
 3. Codex never draws the logo or the 'Ibils' wordmark — it is composited.
 4. Every slide is finalised to exactly 1080x1350.
 5. Himel: same character every slide, pose changes every slide.
+6. **RULE SCRIPT dulu** (`RULE-SCRIPT.md`) + research cara nulis — no draft from banlist alone.
+7. **Kode etik silent** + **triple lint** — lint hijau ≠ lolos ear owner; gold bar ID = **5401–5407** + **5601–5622**; EN global = **5701–5710**.
+8. **Global EN** = `writing-global-en.md` — friend retell, not US-only; visual = deep green typography.
+9. **Logo** = deep green global mark on carousels (`surfaces.md`); closing headline left + phone right.

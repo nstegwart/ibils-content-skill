@@ -3,8 +3,9 @@
  * Finalise raw carousel slides into uniform, brand-consistent assets.
  *
  * For every *.png in the given directory:
- *   1. PAD (never crop) to a 4:5 box using the slide's own edge colour, then
- *      resize to EXACTLY 1080x1350 — uniform carousel size, zero content lost.
+ *   1. COVER-CROP to EXACTLY 1080x1350. Native image generation commonly
+ *      returns 1024x1536 even when asked for 4:5; padding that canvas creates
+ *      visible vertical rails and shrinks the actual poster to ~900px wide.
  *   2. Composite the real Ibils App Store icon into the top-RIGHT corner —
  *      pixel-identical branding on every slide.
  *
@@ -44,7 +45,31 @@ function identify(args) {
     ? execFileP("magick", ["identify", ...args])
     : execFileP("identify", args);
 }
-const LOGO_CARD = path.join(HERE, "..", "assets", "ibils-logo-card.png");
+// Logo card, ALL carousels (owner 2026-07-16, updated 2026-07-17 for the rounded-corner mark):
+//   LOGO_DEFAULT (ibils-logo-card.png) is the one actually composited on every carousel — it is
+//   NOT gated by CAROUSEL_LANG. That env var is read elsewhere (gen-carousel.js prompt selection)
+//   but resolveLogoCard() below only checks CAROUSEL_LOGO. A stale comment here used to claim
+//   CAROUSEL_LANG also selected the logo file — it never did, so every CAROUSEL_LANG=en render
+//   silently fell through to LOGO_DEFAULT. If you ever want a different logo per-surface again,
+//   wire CAROUSEL_LANG into resolveLogoCard() explicitly — don't just add a comment.
+// Override with CAROUSEL_LOGO=global|id|path.
+const ASSETS = path.join(HERE, "..", "assets");
+const LOGO_GLOBAL = path.join(ASSETS, "ibils-logo-card-global.png");
+const LOGO_ID_TEAL = path.join(ASSETS, "ibils-logo-card-id-teal.png");
+const LOGO_DEFAULT = path.join(ASSETS, "ibils-logo-card.png"); // deep green primary
+
+function resolveLogoCard() {
+  const override = process.env.CAROUSEL_LOGO;
+  if (override === "global") return LOGO_GLOBAL;
+  if (override === "id" || override === "teal") {
+    // prefer teal backup if present, else primary
+    return LOGO_ID_TEAL;
+  }
+  if (override && override.endsWith(".png")) return path.resolve(override);
+  // Default: deep green global mark for ALL carousels (owner assign 2026-07-16)
+  return LOGO_DEFAULT;
+}
+const LOGO_CARD = resolveLogoCard();
 
 // ON-SLIDE render sizes. The assets are intentionally HI-RES (a big source downsamples crisp; an
 // upscaled small one goes soft). So every composite below states the size it wants EXPLICITLY and
@@ -66,8 +91,8 @@ const PHONE_COL = [TYPE_COL, 1080];
                          // 778 = the OLD asset's exact height, so the new hi-res source lands at
                          // the same on-slide size the shipped decks already use.
 const BADGES_W = 480;    // store badge strip, width
-const STORE_BADGES = path.join(HERE, "..", "assets", "store-badges.png");
-const CLOSING_PHONE = path.join(HERE, "..", "assets", "closing-phone.png");
+const STORE_BADGES = path.join(ASSETS, "store-badges.png");
+const CLOSING_PHONE = path.join(ASSETS, "closing-phone.png");
 
 const DIR = process.argv[2];
 if (!DIR || DIR.startsWith("--")) {
@@ -107,39 +132,65 @@ async function finalizeOne(file) {
   const id = await identify(["-format", "%w %h", file]);
   const [w, h] = id.stdout.trim().split(/\s+/).map(Number);
   if (!w || !h) throw new Error(`cannot read size: ${file}`);
-  // smallest 4:5 box that CONTAINS the image — pad, do not crop
-  const boxW = Math.max(w, Math.round(h * 0.8));
-  const boxH = Math.max(h, Math.round(w / 0.8));
-  const corner = (
-    await identify(["-format", "%[pixel:p{4,4}]", file])
-  ).stdout.trim();
+  // Fill the target frame, then trim only the overflow. Do NOT use `-extent`
+  // before resize: a 1024x1536 source would become 1229x1536, producing ~90px
+  // solid rails on both sides after resize. gen-carousel reserves extra
+  // vertical safe area so this centre crop cannot cut headline/body/footer.
   await convert([
     file,
-    "-background", corner || "white",
+    "-resize", "1080x1350^",
     "-gravity", "center",
-    "-extent", `${boxW}x${boxH}`,
-    "-resize", "1080x1350!",
+    "-extent", "1080x1350",
     file
   ]);
-  // THE RESERVED CORNER MUST BE CLEAN *BEFORE* WE DROP THE LOGO ON IT.
-  //
-  // codex is told to leave the top-right ~280x280 empty. It ignores that often enough that it has
-  // to be checked — and this is the ONLY place it CAN be checked, because a few lines from now the
-  // logo is composited there and the evidence is destroyed forever.
-  //
-  // (Learned by running the art gate AFTER finalize and getting 12/12 failures for "artwork in the
-  // reserved corner". The artwork was my own logo.)
-  const cnr = await convert([file, "-alpha", "remove",
-    "-gravity", "northeast", "-crop", "280x280+0+0", "+repage",
-    "-format", "%[fx:standard_deviation]", "info:"]);
-  const sd = parseFloat(cnr.stdout);
-  if (Number.isFinite(sd) && sd > 0.13) {
-    throw new Error(
-      `the reserved top-right corner is NOT empty (stddev ${sd.toFixed(3)}) — codex drew in it, and ` +
-      `the logo is about to land on top of that artwork. Re-roll this slide.`);
+
+  // THE RESERVED CORNER CLEAN-CHECK.
+  // Owner 2026-07-16: FORCE_LOGO=1 → skip gate, just stamp logo (green typography decks
+  // often trip the NE plate detector on solid #0E3B33). Default still guards re-rolls.
+  const forceLogo = process.env.FORCE_LOGO === "1" || process.env.SKIP_NE_GATE === "1";
+  if (!forceLogo) {
+    // codex is told to leave the top-right ~280x280 empty. It ignores that often enough that it has
+    // to be checked — and this is the ONLY place it CAN be checked, because a few lines from now the
+    // logo is composited there and the evidence is destroyed forever.
+    //
+    // (Learned by running the art gate AFTER finalize and getting 12/12 failures for "artwork in the
+    // reserved corner". The artwork was my own logo.)
+    //
+    // Owner 2026-07-15 (item-5408 cover): a SOLID green square panel also passes a pure-stddev
+    // gate (uniform colour = low variance) and the logo lands on top — "icon merusak". So also
+    // compare the NE mean to a reference strip just LEFT of the reserved zone. Big colour delta
+    // = codex painted a plate; refuse rather than composite.
+    const cnr = await convert([file, "-alpha", "remove",
+      "-gravity", "northeast", "-crop", "280x280+0+0", "+repage",
+      "-format", "%[fx:standard_deviation]", "info:"]);
+    const sd = parseFloat(cnr.stdout);
+    if (Number.isFinite(sd) && sd > 0.13) {
+      throw new Error(
+        `the reserved top-right corner is NOT empty (stddev ${sd.toFixed(3)}) — codex drew in it, and ` +
+        `the logo is about to land on top of that artwork. Re-roll this slide.`);
+    }
+    // Reference: 80x280 strip immediately left of the NE 280x280 (x=720..800 on a 1080 canvas).
+    const refMean = await convert([file, "-alpha", "remove",
+      "-crop", "80x280+720+0", "+repage",
+      "-resize", "1x1!", "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
+    const neMean = await convert([file, "-alpha", "remove",
+      "-gravity", "northeast", "-crop", "280x280+0+0", "+repage",
+      "-resize", "1x1!", "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
+    const parseRGB = (s) => s.stdout.trim().split(",").map(Number);
+    const [rr, rg, rb] = parseRGB(refMean);
+    const [nr, ng, nb] = parseRGB(neMean);
+    if ([rr, rg, rb, nr, ng, nb].every(Number.isFinite)) {
+      const d = Math.hypot(rr - nr, rg - ng, rb - nb);
+      // 0.06 in 0..1 channel space ≈ a clearly different solid plate (item-5408 panel was ~0.09).
+      if (d > 0.06) {
+        throw new Error(
+          `the reserved top-right corner is a solid plate (Δcolour ${d.toFixed(3)} vs left strip) — ` +
+          `codex painted a badge/card there. Logo would land on it. Re-roll this slide.`);
+      }
+    }
   }
 
-  // App Store icon — always top-RIGHT corner, small.
+  // App Store icon — always top-RIGHT corner, small (non-closing slides only).
   // The SOURCE asset is deliberately hi-res (512px) so it downsamples crisp. The ON-SLIDE size is
   // therefore stated EXPLICITLY here and must never be inherited from the asset's own dimensions —
   // swapping in a bigger source once silently pasted a 512px block onto a 1080px slide.
@@ -168,6 +219,7 @@ async function main() {
   let ok = 0;
   for (const name of entries) {
     const file = path.join(DIR, name);
+    const isClosing = /closing/i.test(name);
     try {
       // already signed? then it is DONE, and running over it again would stack a second logo and then
       // accuse itself of vandalism. Idempotent, without the caller having to remember a flag.
@@ -179,7 +231,7 @@ async function main() {
       await finalizeOne(file);
       // closing slide: composite the real iPhone-splash (real iB logo — never
       // hallucinated) and the store badges into the reserved zones.
-      if (name.includes("closing")) {
+      if (isClosing) {
         // codex often draws a white CTA card in the bottom band despite the
         // prompt. Repaint the badge strip with the slide's own background
         // colour (sampled from a clean right-edge pixel) so the store badges
@@ -191,22 +243,8 @@ async function main() {
         const tag = path.basename(file, ".png");
         const srcStrip = path.join(DIR, `.bg-src-${tag}.png`);
         const patchTile = path.join(DIR, `.bg-patch-${tag}.png`);
-        // This strip is asserted to be CLEAN BACKGROUND, and it is then tiled across the closing
-        // band. Nothing checked that. It sits at x990-1070, y270-530; the logo sits at x906-1034,
-        // y46-174 — they SHARE 44px of x and clear each other in y by only 96px. Raise LOGO_PX to
-        // 224 and this strip samples the logo itself and tiles it across the slide, silently, exit
-        // code 0. Guard the invariant instead of hoping.
+        // Sample strip far from any branding — no top-right logo on closing.
         const STRIP = { x: 990, y: 270, w: 80, h: 260 };
-        const logoBox = { x1: 1080 - 46 - LOGO_PX, x2: 1080 - 46, y1: 46, y2: 46 + LOGO_PX };
-        const overlaps =
-          STRIP.x < logoBox.x2 && STRIP.x + STRIP.w > logoBox.x1 &&
-          STRIP.y < logoBox.y2 && STRIP.y + STRIP.h > logoBox.y1;
-        if (overlaps) {
-          throw new Error(
-            `background-sample strip (${STRIP.x},${STRIP.y} ${STRIP.w}x${STRIP.h}) overlaps the ` +
-            `${LOGO_PX}px logo — it would tile the LOGO across the closing band. Move the strip.`
-          );
-        }
         try {
           await convert([file, "-crop", `${STRIP.w}x${STRIP.h}+${STRIP.x}+${STRIP.y}`, "+repage", srcStrip]);
           await convert(["-size", "690x260", "tile:" + srcStrip, patchTile]);
@@ -303,7 +341,6 @@ async function main() {
           "-gravity", "south", "-geometry", "+0+95", "-composite",
           file
         ]);
-
         // and PROVE they are centred. This is one line, and the defect it catches was visible to the
         // owner from across the room while every gate in this file reported success.
         const bstrip = await convert([file, "-crop", "1080x180+0+1150", "+repage",

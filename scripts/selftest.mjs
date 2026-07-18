@@ -104,6 +104,27 @@ await test("finalize composites everything INSIDE the 1080x1350 slide", async ()
   if (w > 1080 || h > 1350) throw new Error(`composited content ${bbox} overflows the slide`);
 });
 
+await test("finalize cover-crops native 2:3 output instead of adding side rails", async () => {
+  const dir = path.join(TMP, "two-three"); await fs.mkdir(dir, { recursive: true });
+  const f = path.join(dir, "03-content.png");
+  // Alternating edge stripes make the old pad/extent bug unmistakable. A
+  // correct cover crop keeps textured source pixels at both outer edges; the
+  // old implementation sampled one corner colour and created uniform rails.
+  magick(["-size", "1024x1536", "xc:#0E3B33", "-fill", "#FF0000",
+    "-draw", "rectangle 0,0 15,767 rectangle 1008,0 1023,767",
+    "-fill", "#F2A93B",
+    "-draw", "rectangle 0,768 15,1535 rectangle 1008,768 1023,1535", f]);
+  const r = node([path.join(ROOT, "scripts/finalize.js"), dir], {
+    env: { ...process.env, FORCE_LOGO: "1" },
+  });
+  if (r.status !== 0) throw new Error(`finalize failed: ${r.stderr || r.stdout}`);
+  const edgeStats = magick([f, "-crop", "12x1000+0+175", "+repage",
+    "-format", "%[fx:standard_deviation]", "info:"]).stdout.trim();
+  if (Number(edgeStats) < 0.05) {
+    throw new Error(`2:3 source became a uniform side rail: stddev=${edgeStats}`);
+  }
+});
+
 await test("finalize EXITS NON-ZERO when a slide fails", async () => {
   const dir = path.join(TMP, "broken"); await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "02-broken.png"), "this is not a png");
@@ -120,9 +141,11 @@ await test("on-slide sizes are pinned, never inherited from the asset", async ()
   if (!/LOGO_CARD.*-resize|-resize.*LOGO_PX/s.test(src)) throw new Error("LOGO_CARD is composited without -resize");
 });
 
-await test("the background-sample strip cannot overlap the logo", async () => {
+await test("closing keeps the hardened two-column collision gate", async () => {
   const src = await fs.readFile(path.join(ROOT, "scripts/finalize.js"), "utf8");
-  if (!/overlaps the/.test(src)) throw new Error("no guard: the strip is tiled across the closing band and nothing checks it is not sampling the logo");
+  if (!/EdgeIn/.test(src) || !/TYPE_COL/.test(src)) {
+    throw new Error("closing lost its edge-based phone-zone collision gate");
+  }
 });
 
 // ---------------------------------------------------------------- the copy gate
