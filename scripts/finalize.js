@@ -221,7 +221,7 @@ async function finalizeOne(file, { slideLabel = "" } = {}) {
     // only reserved area is over: a quiet outer strip with a shifted mean is a
     // generated right rail, not continuous full-bleed background.
     const railRef = await convert([file, "-alpha", "remove",
-      "-crop", "80x700+760+300", "+repage", "-resize", "1x1!",
+      "-crop", "80x700+0+300", "+repage", "-resize", "1x1!",
       "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
     const railEdge = await convert([file, "-alpha", "remove",
       "-crop", "80x700+1000+300", "+repage", "-resize", "1x1!",
@@ -247,10 +247,10 @@ async function finalizeOne(file, { slideLabel = "" } = {}) {
     // with the strip immediately above it. A low-variance colour jump means a
     // generated footer band; deterministic text must land on bare background.
     const footerRef = await convert([file, "-alpha", "remove",
-      "-crop", "1080x60+0+1170", "+repage", "-resize", "1x1!",
+      "-crop", "80x60+0+1170", "+repage", "-resize", "1x1!",
       "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
     const footerEdge = await convert([file, "-alpha", "remove",
-      "-crop", "1080x60+0+1290", "+repage", "-resize", "1x1!",
+      "-crop", "80x60+0+1290", "+repage", "-resize", "1x1!",
       "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
     const footerSd = await convert([file, "-alpha", "remove",
       "-crop", "1080x60+0+1290", "+repage",

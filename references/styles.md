@@ -30,7 +30,9 @@ or placeholder for any of them.
 For y=0..229, headline and meaningful graphics end at x<=820, while the
 background continues across the full x=0..1079 canvas. Do not design or reserve
 a logo container. Background remains full-bleed under the standard 128x128
-logo card; finalization must never repaint a larger corner rectangle. Below
+logo card; finalization must never repaint a larger corner rectangle. Do not
+leave an empty logo zone or turn it into a panel: the normal background simply
+continues behind the later logo overlay. Below
 y=230 the full x=0..1079 width remains normal design.
 Never draw a sidebar, rail, tab, darker patch, vertical boundary longer
 than 160px, or connect this zone to the slide number. At y=300/500/750/1000,
