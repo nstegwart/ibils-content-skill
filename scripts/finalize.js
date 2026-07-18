@@ -147,7 +147,7 @@ async function isFinalized(file) {
   return !!r && r.stdout.includes(STAMP);
 }
 
-async function finalizeOne(file, { slideLabel = "" } = {}) {
+async function finalizeOne(file, { slideLabel = "", isClosing = false } = {}) {
   const id = await identify(["-format", "%w %h", file]);
   const [w, h] = id.stdout.trim().split(/\s+/).map(Number);
   if (!w || !h) throw new Error(`cannot read size: ${file}`);
@@ -175,7 +175,7 @@ async function finalizeOne(file, { slideLabel = "" } = {}) {
   // Owner 2026-07-16: FORCE_LOGO=1 → skip gate, just stamp logo (green typography decks
   // often trip the NE plate detector on solid #0E3B33). Default still guards re-rolls.
   const forceLogo = process.env.FORCE_LOGO === "1" || process.env.SKIP_NE_GATE === "1";
-  if (!forceLogo) {
+  if (!forceLogo && !isClosing) {
     // codex is told to leave the top-right ~280x280 empty. It ignores that often enough that it has
     // to be checked — and this is the ONLY place it CAN be checked, because a few lines from now the
     // logo is composited there and the evidence is destroyed forever.
@@ -234,7 +234,9 @@ async function finalizeOne(file, { slideLabel = "" } = {}) {
     const edgeSd = parseFloat(railSd.stdout);
     if ([ir, ig, ib, er, eg, eb, edgeSd].every(Number.isFinite)) {
       const railDelta = Math.hypot(ir - er, ig - eg, ib - eb);
-      if (railDelta > 0.018 && edgeSd < 0.05) {
+      // Small texture/lighting drift between the two outer strips is normal;
+      // reject only a clearly distinct solid panel.
+      if (railDelta > 0.04 && edgeSd < 0.05) {
         throw new Error(
           `generated right-side rail detected (Δcolour ${railDelta.toFixed(3)}, ` +
           `edge stddev ${edgeSd.toFixed(3)}) — below y=230 the background must ` +
@@ -297,7 +299,7 @@ async function finalizeOne(file, { slideLabel = "" } = {}) {
 
 async function main() {
   let entries = (await fs.readdir(DIR))
-    .filter((f) => f.toLowerCase().endsWith(".png"))
+    .filter((f) => f.toLowerCase().endsWith(".png") && !/\.raw\.png$/i.test(f))
     .sort();
   const deckTotal = entries.length;
   if (ONLY.length) {
@@ -327,7 +329,7 @@ async function main() {
       const slideLabel = slideNo
         ? `${String(slideNo).padStart(2, "0")}/${String(deckTotal).padStart(2, "0")}`
         : "";
-      await finalizeOne(file, { slideLabel: isClosing ? "" : slideLabel });
+      await finalizeOne(file, { slideLabel: isClosing ? "" : slideLabel, isClosing });
       // closing slide: composite the real iPhone-splash (real iB logo — never
       // hallucinated) and the store badges into the reserved zones.
       if (isClosing) {

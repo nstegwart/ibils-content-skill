@@ -203,6 +203,13 @@ await test("global finalize changes no top-right pixels outside the 128px logo",
   }
 });
 
+await test("finalize ignores retry backup PNGs", async () => {
+  const src = await fs.readFile(path.join(ROOT, "scripts/finalize.js"), "utf8");
+  if (!/!\/\\\.raw\\\.png\$\/i\.test\(f\)/.test(src)) {
+    throw new Error("finalizer would count generator retry backups as carousel slides");
+  }
+});
+
 await test("global footer resolves a real font file", async () => {
   const src = await fs.readFile(path.join(ROOT, "scripts/finalize.js"), "utf8");
   if (!/CAROUSEL_FONT/.test(src) || !/resolveFooterFont/.test(src)) {
