@@ -25,7 +25,8 @@ Both the logo and the closing-slide phone are composited afterwards by
 !!! ABSOLUTE RULE — READ FIRST !!!
 Do NOT draw a logo, a logo mark, a brand badge, an app-icon badge, or write
 the word 'Ibils' as a wordmark ANYWHERE on this slide. No brand
-name text. Draw no handle and no slide number; the finalizer adds all branding.
+name text. Draw no handle, footer label, slide number, pagination, page count,
+or placeholder for any of them.
 For y=0..229, headline and meaningful graphics end at x<=820, while the
 background continues across the full x=0..1079 canvas. Do not design or reserve
 a logo container. Below y=230 the full x=0..1079 width remains normal design.
@@ -86,8 +87,9 @@ restrained, editorial — a finished design asset.
 
 ```
 BRANDING — draw no logo, logo container, 'Ibils' wordmark, handle, footer,
-slide number, pagination, or page count. The finalizer adds them directly on
-the background. Never create a sidebar, footer box, corner card, tab, or plate.
+slide number, pagination, page count, or placeholder. Never create a sidebar,
+footer box, corner card, tab, or plate. From y=1231..1349 continue the same
+full-width background with no horizontal boundary or colour change.
 ```
 
 ---

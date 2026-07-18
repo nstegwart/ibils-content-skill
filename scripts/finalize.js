@@ -245,6 +245,32 @@ async function finalizeOne(file, { slideLabel = "" } = {}) {
           `remain full-width. Re-roll this slide.`);
       }
     }
+
+    // Same failure rotated 90 degrees: the model may draw a full-width footer
+    // plate for pagination even when asked not to. Compare a quiet bottom strip
+    // with the strip immediately above it. A low-variance colour jump means a
+    // generated footer band; deterministic text must land on bare background.
+    const footerRef = await convert([file, "-alpha", "remove",
+      "-crop", "1080x60+0+1170", "+repage", "-resize", "1x1!",
+      "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
+    const footerEdge = await convert([file, "-alpha", "remove",
+      "-crop", "1080x60+0+1290", "+repage", "-resize", "1x1!",
+      "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
+    const footerSd = await convert([file, "-alpha", "remove",
+      "-crop", "1080x60+0+1290", "+repage",
+      "-format", "%[fx:standard_deviation]", "info:"]);
+    const [fr, fg, fb] = parseRGB(footerRef);
+    const [br, bg, bb] = parseRGB(footerEdge);
+    const bottomSd = parseFloat(footerSd.stdout);
+    if ([fr, fg, fb, br, bg, bb, bottomSd].every(Number.isFinite)) {
+      const footerDelta = Math.hypot(fr - br, fg - bg, fb - bb);
+      if (footerDelta > 0.018 && bottomSd < 0.05) {
+        throw new Error(
+          `generated footer band detected (Δcolour ${footerDelta.toFixed(3)}, ` +
+          `bottom stddev ${bottomSd.toFixed(3)}) — y=1231..1349 must remain ` +
+          `continuous background. Re-roll this slide.`);
+      }
+    }
   }
 
   // App Store icon — always top-RIGHT corner, small (non-closing slides only).
@@ -266,8 +292,8 @@ async function finalizeOne(file, { slideLabel = "" } = {}) {
     await convert([
       file,
       "-font", footerFont, "-pointsize", "34", "-fill", "#FBF6E9",
-      "-gravity", "southwest", "-geometry", "+80+68", "-annotate", "0", "@ibils.global",
-      "-gravity", "southeast", "-geometry", "+70+68", "-annotate", "0", slideLabel,
+      "-gravity", "southwest", "-annotate", "+80+68", "@ibils.global",
+      "-gravity", "southeast", "-annotate", "+70+68", slideLabel,
       file
     ]);
   }

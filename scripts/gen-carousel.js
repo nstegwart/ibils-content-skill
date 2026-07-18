@@ -43,15 +43,15 @@ const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "m
 const HARD_RULE = [
   "!!! ABSOLUTE RULE — READ FIRST !!!",
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
-  "word 'Ibils' as a wordmark ANYWHERE. Draw NO handle and NO slide number;",
-  "the finalizer adds all branding and footer typography later.",
+  "word 'Ibils' as a wordmark ANYWHERE. Draw NO handle, footer label, slide",
+  "number, pagination or page-count text. Do not draw a placeholder for them.",
   "Do not design any logo container or landing zone. For y=0..229, headline",
   "and meaningful graphics must end at x<=820. The BACKGROUND still spans the",
   "entire x=0..1079 canvas with no visual reservation or special region.",
   "No rectangle, card, badge, tab, darker patch, lighter patch, border, notch,",
   "vertical bar or rail. Below y=230, the full x=0..1079 width is normal design.",
   "Never draw a vertical boundary near x=800..1000 longer than 160 pixels.",
-  "Never connect the logo zone to the slide-number area. At y=300,500,750,1000,",
+  "At y=300,500,750,1000,",
   "the background at x=870 and x=1070 must be continuous—no sidebar or rail."
 ].join("\n");
 
@@ -108,6 +108,9 @@ const FORMAT = [
   "all four canvas edges. Usable poster width remains x=0..1079 everywhere",
   "except the small logo landing zone x=880..1079,y=0..229. Never turn that",
   "small corner landing zone into a full-height or partial-height side panel.",
+  "BOTTOM GEOMETRY — keep all meaningful content above y=1230. From y=1231",
+  "through y=1349, continue the SAME full-width background with no horizontal",
+  "boundary, footer band, strip, box, plate, tab, rectangle or colour change.",
   TEXT_LANG_RULE,
   "No watermark, no signature, no extra text."
 ].join("\n");
@@ -140,8 +143,8 @@ const NOT_AI = [
 const BRANDING =
   "BRANDING — draw absolutely NO logo, logo container, 'Ibils' wordmark, " +
   "social handle, footer label, slide number, pagination, or page-count text. " +
-  "Leave branding to the deterministic finalizer. Do not create a sidebar, " +
-  "footer box, corner card, tab, plate, or coloured block for future branding.";
+  "Do not create a sidebar, footer box, corner card, tab, plate, coloured block, " +
+  "or placeholder for any of them. Background remains uninterrupted.";
 
 const PROP_RULE = [
   "PROP ORIENTATION — when Himel holds a document, receipt, bill, list, paper,",

@@ -136,6 +136,17 @@ await test("finalize rejects a model-drawn right sidebar", async () => {
   }
 });
 
+await test("finalize rejects a model-drawn footer band", async () => {
+  const dir = path.join(TMP, "drawn-footer"); await fs.mkdir(dir, { recursive: true });
+  const f = path.join(dir, "03-content.png");
+  magick(["-size", "1080x1350", "xc:#0E3B33", "-fill", "#173F38",
+    "-draw", "rectangle 0,1260 1079,1349", f]);
+  const r = node([path.join(ROOT, "scripts/finalize.js"), dir]);
+  if (r.status === 0 || !/footer band/i.test(r.stdout + r.stderr)) {
+    throw new Error("a full-width generated footer band passed finalization");
+  }
+});
+
 await test("finalize EXITS NON-ZERO when a slide fails", async () => {
   const dir = path.join(TMP, "broken"); await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "02-broken.png"), "this is not a png");
@@ -156,6 +167,9 @@ await test("global footer resolves a real font file", async () => {
   const src = await fs.readFile(path.join(ROOT, "scripts/finalize.js"), "utf8");
   if (!/CAROUSEL_FONT/.test(src) || !/resolveFooterFont/.test(src)) {
     throw new Error("global footer still relies on an unverified ImageMagick font alias");
+  }
+  if (!/annotate", "\+80\+68"/.test(src) || !/annotate", "\+70\+68"/.test(src)) {
+    throw new Error("footer offsets are not passed to -annotate and may be ignored");
   }
 });
 
