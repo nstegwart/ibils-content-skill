@@ -25,10 +25,10 @@ Both the logo and the closing-slide phone are composited afterwards by
 !!! ABSOLUTE RULE — READ FIRST !!!
 Do NOT draw a logo, a logo mark, a brand badge, an app-icon badge, or write
 the word 'Ibils' as a wordmark ANYWHERE on this slide. No brand
-name text. No corner badge. The real logo is composited into the exact FINAL
-1080x1350 zone x=880..1079,y=0..229. Keep text and meaningful graphics outside
-it, but do not design or visually reserve a logo container. Continue the same
-full-canvas background through it. Below y=230 the design remains full width.
+name text. Draw no handle and no slide number; the finalizer adds all branding.
+For y=0..229, headline and meaningful graphics end at x<=820, while the
+background continues across the full x=0..1079 canvas. Do not design or reserve
+a logo container. Below y=230 the full x=0..1079 width remains normal design.
 Never draw a sidebar, rail, tab, darker patch, vertical boundary longer
 than 160px, or connect this zone to the slide number. At y=300/500/750/1000,
 x=870 and x=1070 must remain visually continuous.
@@ -85,11 +85,9 @@ restrained, editorial — a finished design asset.
 ## Block F — BRANDING
 
 ```
-BRANDING — the slide has NO drawn logo and NO 'Ibils' wordmark. Keep the
-logo landing zone x=880..1079,y=0..229 as seamless background, never a panel.
-Render the slide number as plain small type only inside
-x=930..1035,y=1210..1270 with no box/plate behind it. Only draw the footer: a
-small handle bottom-left (English = @ibils.global) and that slide number.
+BRANDING — draw no logo, logo container, 'Ibils' wordmark, handle, footer,
+slide number, pagination, or page count. The finalizer adds them directly on
+the background. Never create a sidebar, footer box, corner card, tab, or plate.
 ```
 
 ---

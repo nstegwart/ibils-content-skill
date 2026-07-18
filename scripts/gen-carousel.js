@@ -43,13 +43,13 @@ const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "m
 const HARD_RULE = [
   "!!! ABSOLUTE RULE — READ FIRST !!!",
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
-  "word 'Ibils' as a wordmark ANYWHERE. No corner badge. The real logo is",
-  "composited later. Do not design a logo container or landing zone at all.",
-  "Keep typography and meaningful graphics OUTSIDE x=880..1079,y=0..229, but",
-  "continue the full-canvas background through it as if no logo will exist.",
-  "Do not visually reserve that area: no rectangle, card, badge, tab, darker",
-  "patch, lighter patch, border, notch, vertical bar or rail. Below y=230,",
-  "x=880..1079 remains normal full-width design immediately.",
+  "word 'Ibils' as a wordmark ANYWHERE. Draw NO handle and NO slide number;",
+  "the finalizer adds all branding and footer typography later.",
+  "Do not design any logo container or landing zone. For y=0..229, headline",
+  "and meaningful graphics must end at x<=820. The BACKGROUND still spans the",
+  "entire x=0..1079 canvas with no visual reservation or special region.",
+  "No rectangle, card, badge, tab, darker patch, lighter patch, border, notch,",
+  "vertical bar or rail. Below y=230, the full x=0..1079 width is normal design.",
   "Never draw a vertical boundary near x=800..1000 longer than 160 pixels.",
   "Never connect the logo zone to the slide-number area. At y=300,500,750,1000,",
   "the background at x=870 and x=1070 must be continuous—no sidebar or rail."
@@ -138,13 +138,10 @@ const NOT_AI = [
 ].join("\n");
 
 const BRANDING =
-  "BRANDING — draw NO logo, logo container, or 'Ibils' wordmark. Keep text and " +
-  "meaningful graphics outside x=880..1079,y=0..229, but do NOT visually reserve it. " +
-  "Slide number is plain small type only inside x=930..1035,y=1210..1270, " +
-  "with NO box, tab, plate or coloured block behind it. Footer: " +
-  (IG_HANDLE
-    ? "a small '" + IG_HANDLE + "' handle bottom-left and the slide number bottom-right."
-    : "NO handle at all — bottom-left stays EMPTY. Only the slide number, bottom-right.");
+  "BRANDING — draw absolutely NO logo, logo container, 'Ibils' wordmark, " +
+  "social handle, footer label, slide number, pagination, or page-count text. " +
+  "Leave branding to the deterministic finalizer. Do not create a sidebar, " +
+  "footer box, corner card, tab, plate, or coloured block for future branding.";
 
 const PROP_RULE = [
   "PROP ORIENTATION — when Himel holds a document, receipt, bill, list, paper,",

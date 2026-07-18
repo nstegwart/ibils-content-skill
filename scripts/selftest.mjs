@@ -152,6 +152,13 @@ await test("on-slide sizes are pinned, never inherited from the asset", async ()
   if (!/LOGO_CARD.*-resize|-resize.*LOGO_PX/s.test(src)) throw new Error("LOGO_CARD is composited without -resize");
 });
 
+await test("global footer resolves a real font file", async () => {
+  const src = await fs.readFile(path.join(ROOT, "scripts/finalize.js"), "utf8");
+  if (!/CAROUSEL_FONT/.test(src) || !/resolveFooterFont/.test(src)) {
+    throw new Error("global footer still relies on an unverified ImageMagick font alias");
+  }
+});
+
 await test("closing keeps the hardened two-column collision gate", async () => {
   const src = await fs.readFile(path.join(ROOT, "scripts/finalize.js"), "utf8");
   if (!/EdgeIn/.test(src) || !/TYPE_COL/.test(src)) {

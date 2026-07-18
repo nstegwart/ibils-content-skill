@@ -93,6 +93,25 @@ const PHONE_COL = [TYPE_COL, 1080];
 const BADGES_W = 480;    // store badge strip, width
 const STORE_BADGES = path.join(ASSETS, "store-badges.png");
 const CLOSING_PHONE = path.join(ASSETS, "closing-phone.png");
+const FOOTER_FONT_CANDIDATES = [
+  process.env.CAROUSEL_FONT,
+  "/System/Library/Fonts/Helvetica.ttc",
+  "/System/Library/Fonts/HelveticaNeue.ttc",
+  "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+].filter(Boolean);
+
+async function resolveFooterFont() {
+  for (const candidate of FOOTER_FONT_CANDIDATES) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // try next installed font
+    }
+  }
+  throw new Error(
+    "no footer font found; set CAROUSEL_FONT to an installed .ttf/.otf/.ttc path");
+}
 
 const DIR = process.argv[2];
 if (!DIR || DIR.startsWith("--")) {
@@ -128,7 +147,7 @@ async function isFinalized(file) {
   return !!r && r.stdout.includes(STAMP);
 }
 
-async function finalizeOne(file) {
+async function finalizeOne(file, { slideLabel = "" } = {}) {
   const id = await identify(["-format", "%w %h", file]);
   const [w, h] = id.stdout.trim().split(/\s+/).map(Number);
   if (!w || !h) throw new Error(`cannot read size: ${file}`);
@@ -237,12 +256,28 @@ async function finalizeOne(file) {
     "-gravity", "northeast", "-geometry", "+46+46", "-composite",
     file
   ]);
+
+  // Global footer typography is deterministic too. Asking the model to place
+  // the handle and page number repeatedly caused it to connect both corners
+  // with a full-height sidebar. No panel is painted here: typography lands
+  // directly on the full-bleed background.
+  if (globalGreen && slideLabel) {
+    const footerFont = await resolveFooterFont();
+    await convert([
+      file,
+      "-font", footerFont, "-pointsize", "34", "-fill", "#FBF6E9",
+      "-gravity", "southwest", "-geometry", "+80+68", "-annotate", "0", "@ibils.global",
+      "-gravity", "southeast", "-geometry", "+70+68", "-annotate", "0", slideLabel,
+      file
+    ]);
+  }
 }
 
 async function main() {
   let entries = (await fs.readdir(DIR))
     .filter((f) => f.toLowerCase().endsWith(".png"))
     .sort();
+  const deckTotal = entries.length;
   if (ONLY.length) {
     entries = entries.filter((f) => ONLY.includes(f.replace(/\.png$/i, "")));
     if (!entries.length) {
@@ -266,7 +301,11 @@ async function main() {
         ok++;
         continue;
       }
-      await finalizeOne(file);
+      const slideNo = Number((name.match(/^(\d+)/) || [])[1]);
+      const slideLabel = slideNo
+        ? `${String(slideNo).padStart(2, "0")}/${String(deckTotal).padStart(2, "0")}`
+        : "";
+      await finalizeOne(file, { slideLabel: isClosing ? "" : slideLabel });
       // closing slide: composite the real iPhone-splash (real iB logo — never
       // hallucinated) and the store badges into the reserved zones.
       if (isClosing) {
