@@ -165,8 +165,41 @@ await test("on-slide sizes are pinned, never inherited from the asset", async ()
 
 await test("global logo never repaints a larger corner panel", async () => {
   const src = await fs.readFile(path.join(ROOT, "scripts/finalize.js"), "utf8");
-  if (/draw", "rectangle 880,0 1079,229/.test(src)) {
-    throw new Error("finalizer still paints a 200x230 block behind the 128px logo");
+  if (!/const LOGO_PX\s*=\s*128\s*;/.test(src)) {
+    throw new Error("global on-slide logo size is no longer exactly 128px");
+  }
+  if (!/"-gravity", "northeast", "-geometry", "\+46\+46", "-composite"/.test(src)) {
+    throw new Error("global logo moved from the approved x=906..1033, y=46..173 bounds");
+  }
+  const beforeLogo = src.split("// App Store icon")[0];
+  if (/rectangle\s+8\d\d,0\s+1079,\d+/.test(beforeLogo)) {
+    throw new Error("finalizer paints a larger top-right panel behind the 128px logo");
+  }
+});
+
+await test("global finalize changes no top-right pixels outside the 128px logo", async () => {
+  const dir = path.join(TMP, "logo-footprint"); await fs.mkdir(dir, { recursive: true });
+  const before = path.join(dir, "before.png");
+  const after = path.join(dir, "03-content.png");
+  // A vertical gradient exposes any supposedly harmless solid-green repaint.
+  magick(["-size", "1080x1350", "gradient:#082F29-#1C5148", before]);
+  await fs.copyFile(before, after);
+  const r = node([path.join(ROOT, "scripts/finalize.js"), dir], {
+    env: { ...process.env, CAROUSEL_LANG: "en", FORCE_LOGO: "1" },
+  });
+  if (r.status !== 0) throw new Error(`finalize failed: ${r.stderr || r.stdout}`);
+
+  // Approved logo bounds are x=906..1033 and y=46..173. These four strips
+  // cover the surrounding historical 200x230 panel and must remain untouched.
+  const strips = ["26x230+880+0", "46x230+1034+0", "128x46+906+0", "128x56+906+174"];
+  for (const [i, crop] of strips.entries()) {
+    const a = path.join(dir, `before-${i}.png`);
+    const b = path.join(dir, `after-${i}.png`);
+    magick([before, "-crop", crop, "+repage", a]);
+    magick([after, "-crop", crop, "+repage", b]);
+    const cmp = magick(["compare", "-metric", "AE", a, b, "null:"]);
+    const changed = parseFloat((cmp.stderr || cmp.stdout).trim());
+    if (changed !== 0) throw new Error(`${changed} pixels changed outside logo at ${crop}`);
   }
 });
 

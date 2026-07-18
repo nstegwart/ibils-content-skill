@@ -133,6 +133,12 @@ Cover-crops every slide to exact 1080x1350 and composites the logo TOP-RIGHT
 (non-closing). Never pad a 2:3 native render: padding creates solid side rails
 and shrinks the poster. The generation prompt reserves 12% top/bottom bleed so
 the crop is safe.
+
+**Global logo geometry is exact:** composite only the `128x128` logo card at
+ImageMagick northeast offset `+46+46` (pixel bounds `x=906..1033`,
+`y=46..173` on a 1080x1350 slide). Keep the generated background full-bleed
+behind it. Never erase, recolour, or paint a larger corner rectangle before
+stamping the logo; that creates the rejected 200x230 panel.
 Closing: hardened two-column plate, phone splash on the right, centred store
 badges, and no Himel.
 
@@ -140,11 +146,18 @@ badges, and no Himel.
 
 Open the finalised slides and check, slide by slide:
 - all are exactly 1080x1350;
-- the App Store icon sits identically in the TOP-RIGHT corner of every slide;
+- inspect the final PNG itself; the App Store icon is exactly 128x128 at
+  `x=906..1033`, `y=46..173`, with no larger plate, rail, or recoloured area;
 - Himel is the same character, in a different pose per slide;
 - no codex-drawn logo and no 'Ibils' wordmark text anywhere;
 - text is crisp, correctly spelled, no AI artefacts;
 - no invented numbers — every figure traces to `plan.json` sources.
+
+If the user reviews through a mutable local/media URL, verify that exact served
+response too. Carousel PNG routes must use `Cache-Control: no-store` (or a new
+content-versioned URL), because files are regenerated in place. Compare the
+served PNG SHA-256 with the final file SHA-256. A correct disk PNG plus a stale
+browser render is not accepted as fixed.
 
 Report: output path, slide count, and the cited sources. Flag any slide that
 fails so the user can regenerate just that one.
@@ -165,8 +178,11 @@ mascot, garbled art) or wrong copy.
      (`03-statement`); comma-separate or repeat for several.
    regen re-renders just those slides; the rest of the carousel is untouched.
 4. Open the regenerated slide and verify: correct anatomy (two arms/hands),
-   nothing cropped, text crisp and correctly spelled, exactly 1080x1350. Still
-   wrong → run step 3 again (each regen is a fresh roll).
+   nothing cropped, text crisp and correctly spelled, exactly 1080x1350. For a
+   global slide, also enforce the exact 128x128 logo bounds and full-bleed
+   background above. If it is viewed through a media URL, bypass/disable cache
+   and confirm the served hash matches the file. Still wrong → run step 3 again
+   (each regen is a fresh roll).
 5. Report which slide(s) changed and the folder path.
 
 ## Bundle
@@ -200,3 +216,5 @@ mascot, garbled art) or wrong copy.
 7. **Kode etik silent** + **triple lint** — lint hijau ≠ lolos ear owner; gold bar ID = **5401–5407** + **5601–5622**; EN global = **5701–5710**.
 8. **Global EN** = `writing-global-en.md` — friend retell, not US-only; visual = deep green typography.
 9. **Logo** = deep green global mark on carousels (`surfaces.md`); closing headline left + phone right.
+10. **Mutable PNG URLs never use a positive browser TTL** — serve `no-store` or
+    use content-versioned URLs, then compare served and disk hashes during QA.
