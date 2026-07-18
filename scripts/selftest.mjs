@@ -163,6 +163,13 @@ await test("on-slide sizes are pinned, never inherited from the asset", async ()
   if (!/LOGO_CARD.*-resize|-resize.*LOGO_PX/s.test(src)) throw new Error("LOGO_CARD is composited without -resize");
 });
 
+await test("global logo never repaints a larger corner panel", async () => {
+  const src = await fs.readFile(path.join(ROOT, "scripts/finalize.js"), "utf8");
+  if (/draw", "rectangle 880,0 1079,229/.test(src)) {
+    throw new Error("finalizer still paints a 200x230 block behind the 128px logo");
+  }
+});
+
 await test("global footer resolves a real font file", async () => {
   const src = await fs.readFile(path.join(ROOT, "scripts/finalize.js"), "utf8");
   if (!/CAROUSEL_FONT/.test(src) || !/resolveFooterFont/.test(src)) {

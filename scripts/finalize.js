@@ -163,17 +163,13 @@ async function finalizeOne(file, { slideLabel = "" } = {}) {
     file
   ]);
 
-  // Global green is deterministic: erase only the 200x230 logo footprint with
-  // the canonical background colour. Asking an image model to "reserve a logo
-  // zone" repeatedly produced a visible card or full-height sidebar. Important
-  // content is kept out of this box by prompt coordinates; the background and
-  // logo are owned here, not guessed by the model.
+  // Global branding is deterministic, but the BACKGROUND IS NEVER REPAINTED.
+  // The artwork remains full-bleed beneath the standard 128x128 logo card.
+  // Repainting a 200x230 corner created the giant square panel the owner
+  // rejected; only the logo asset itself may cover pixels.
   const globalGreen =
     String(process.env.CAROUSEL_LANG || "").toLowerCase() === "en" ||
     ["global-green", "marketing"].includes(String(process.env.CAROUSEL_STYLE || "").toLowerCase());
-  if (globalGreen) {
-    await convert([file, "-fill", "#0E3B33", "-draw", "rectangle 880,0 1079,229", file]);
-  }
 
   // THE RESERVED CORNER CLEAN-CHECK.
   // Owner 2026-07-16: FORCE_LOGO=1 → skip gate, just stamp logo (green typography decks
