@@ -45,18 +45,17 @@ function identify(args) {
     ? execFileP("magick", ["identify", ...args])
     : execFileP("identify", args);
 }
-// Logo card, ALL carousels (owner 2026-07-16, updated 2026-07-17 for the rounded-corner mark):
-//   LOGO_DEFAULT (ibils-logo-card.png) is the one actually composited on every carousel — it is
-//   NOT gated by CAROUSEL_LANG. That env var is read elsewhere (gen-carousel.js prompt selection)
-//   but resolveLogoCard() below only checks CAROUSEL_LOGO. A stale comment here used to claim
-//   CAROUSEL_LANG also selected the logo file — it never did, so every CAROUSEL_LANG=en render
-//   silently fell through to LOGO_DEFAULT. If you ever want a different logo per-surface again,
-//   wire CAROUSEL_LANG into resolveLogoCard() explicitly — don't just add a comment.
-// Override with CAROUSEL_LOGO=global|id|path.
+// Logo mark, ALL carousels.
+//   D2 (owner): ibils-logo-card.png is a CARD with fill srgb(14,59,51) while the slide corner
+//   ground is often srgb(7,55,47) — the plate reads as a bright square behind the mark.
+//   Default is therefore the white transparent mark (ibils-logo-mark.png) so the glyph sits
+//   directly on whatever ground the plate painted. Card assets remain available via override.
+// Override with CAROUSEL_LOGO=global|id|teal|card|path.
 const ASSETS = path.join(HERE, "..", "assets");
 const LOGO_GLOBAL = path.join(ASSETS, "ibils-logo-card-global.png");
 const LOGO_ID_TEAL = path.join(ASSETS, "ibils-logo-card-id-teal.png");
-const LOGO_DEFAULT = path.join(ASSETS, "ibils-logo-card.png"); // deep green primary
+const LOGO_CARD_PLATE = path.join(ASSETS, "ibils-logo-card.png"); // deep green primary CARD (plate)
+const LOGO_MARK = path.join(ASSETS, "ibils-logo-mark.png"); // D2: white mark, transparent bg
 
 function resolveLogoCard() {
   const override = process.env.CAROUSEL_LOGO;
@@ -65,16 +64,25 @@ function resolveLogoCard() {
     // prefer teal backup if present, else primary
     return LOGO_ID_TEAL;
   }
+  if (override === "card" || override === "plate") return LOGO_CARD_PLATE;
+  if (override === "mark") return LOGO_MARK;
   if (override && override.endsWith(".png")) return path.resolve(override);
-  // Default: deep green global mark for ALL carousels (owner assign 2026-07-16)
-  return LOGO_DEFAULT;
+  // D2 default: transparent white mark blends on any ground (no plate square)
+  return LOGO_MARK;
 }
 const LOGO_CARD = resolveLogoCard();
 
 // ON-SLIDE render sizes. The assets are intentionally HI-RES (a big source downsamples crisp; an
 // upscaled small one goes soft). So every composite below states the size it wants EXPLICITLY and
 // never inherits it from the asset file. Bumping an asset's resolution must NOT change the layout.
-const LOGO_PX = 128;     // App Store icon, top-right
+const LOGO_PX = 128;     // App Store icon, top-right (fit-box; mark preserves aspect)
+
+// D1 — kicker is composite-only. Model-drawn kickers drifted in position AND colour
+// (content cream ~x245,y240 vs closing amber ~x155,y152). One deck = one geometry.
+const KICKER_POINTSIZE = 28;
+const KICKER_FILL_CREAM = "#FBF6E9"; // global-green decks (cream on deep green)
+const KICKER_FILL_DARK = "#0E3B33";  // newsprint / cream-paper decks
+const KICKER_GEOMETRY = "+80+96";    // northwest; x matches footer handle margin
 // THE CLOSING SLIDE IS TWO COLUMNS: type on the left, device on the right.
 //
 // It used to be "headline in a top band, phone in the middle", and codex never once obeyed it — it
@@ -147,7 +155,26 @@ async function isFinalized(file) {
   return !!r && r.stdout.includes(STAMP);
 }
 
-async function finalizeOne(file, { slideLabel = "", isClosing = false } = {}) {
+async function resolveKickerText(slidesDir) {
+  // D1 — kicker string for deterministic composite. Prefer env, else plan.json beside slides/.
+  if (process.env.CAROUSEL_KICKER != null && String(process.env.CAROUSEL_KICKER).length) {
+    return String(process.env.CAROUSEL_KICKER);
+  }
+  for (const p of [
+    path.join(slidesDir, "plan.json"),
+    path.join(slidesDir, "..", "plan.json"),
+  ]) {
+    try {
+      const j = JSON.parse(await fs.readFile(p, "utf8"));
+      if (j && j.kicker) return String(j.kicker);
+    } catch {
+      /* try next */
+    }
+  }
+  return "";
+}
+
+async function finalizeOne(file, { slideLabel = "", isClosing = false, kickerText = "" } = {}) {
   const id = await identify(["-format", "%w %h", file]);
   const [w, h] = id.stdout.trim().split(/\s+/).map(Number);
   if (!w || !h) throw new Error(`cannot read size: ${file}`);
@@ -271,20 +298,65 @@ async function finalizeOne(file, { slideLabel = "", isClosing = false } = {}) {
     }
   }
 
-  // App Store icon — always top-RIGHT corner, small (non-closing slides only).
-  // The SOURCE asset is deliberately hi-res (512px) so it downsamples crisp. The ON-SLIDE size is
+  // App Store icon — top-RIGHT corner, small.
+  // D3 — closing must NOT get the corner logo (owner): closing already carries brand via
+  // phone splash + 2 store badges. Corner mark on closing is redundant clutter.
+  // D2 — default asset is the transparent white mark (see resolveLogoCard).
+  // The SOURCE asset is deliberately hi-res so it downsamples crisp. The ON-SLIDE size is
   // therefore stated EXPLICITLY here and must never be inherited from the asset's own dimensions —
   // swapping in a bigger source once silently pasted a 512px block onto a 1080px slide.
-  await convert([
-    file, "(", LOGO_CARD, "-resize", `${LOGO_PX}x${LOGO_PX}`, ")",
-    "-gravity", "northeast", "-geometry", "+46+46", "-composite",
-    file
-  ]);
+  if (!isClosing) {
+    await convert([
+      file, "(", LOGO_CARD, "-resize", `${LOGO_PX}x${LOGO_PX}`, ")",
+      "-gravity", "northeast", "-geometry", "+46+46", "-composite",
+      file
+    ]);
+  }
+
+  // D1 — kicker stamped at FIXED geometry on every slide (incl. closing). Same font path
+  // family as the footer so a deck never mixes model-drawn amber with cream labels.
+  if (kickerText) {
+    const kickerFont = await resolveFooterFont();
+    const backup = `${file}.pre-kicker.png`;
+    await convert([file, backup]);
+    // GAMBAR, UKUR HASILNYA, PERBAIKI KALAU TIDAK TERLIHAT.
+    //
+    // Dua percobaan sebelumnya gagal karena sama-sama MENEBAK warna sebelum menggambar:
+    //   1. dari flag deck (`globalGreen`) — pada deck yang flagnya tak terbaca, kicker dicat
+    //      #0E3B33 di atas ground #0E3B33 dan hilang, tapi finalize tetap melapor "+ kicker".
+    //   2. dari rata-rata luma ground — GRAIN MENIPU RATA-RATA. Plate bernoise terukur 152
+    //      sementara plate mulus dengan ground yang SAMA terukur 95, jadi ambang 128 terlewat
+    //      dan kicker kembali tak terlihat. Rata-rata bukan alat ukur untuk permukaan berbintik.
+    //
+    // Yang tidak bisa ditipu: menggambarnya, lalu membandingkan area itu SEBELUM dan SESUDAH.
+    // Kalau selisihnya kecil, cat itu memang tidak terlihat — apa pun kata teori warnanya.
+    const KBOX = ["-crop", "360x70+72+82", "+repage", "-colorspace", "gray"];
+    const meas = async (f) => parseFloat((await convert([f, ...KBOX, "-format", "%[fx:mean*255]", "info:"])).stdout);
+    const before = await meas(file);
+
+    const stamp = async (fill) => {
+      await convert([file, "-font", kickerFont, "-pointsize", String(KICKER_POINTSIZE),
+        "-fill", fill, "-gravity", "northwest", "-annotate", KICKER_GEOMETRY, kickerText, file]);
+      return Math.abs((await meas(file)) - before);
+    };
+
+    let delta = await stamp(KICKER_FILL_CREAM);
+    if (delta < 3) {
+      // cream tidak menggigit di ground ini — kembalikan plate, coba warna lawan
+      await convert([backup, file]);
+      delta = await stamp(KICKER_FILL_DARK);
+    }
+    await fs.rm(backup, { force: true }).catch(() => {});
+    if (delta < 3) {
+      throw new Error(`kicker "${kickerText}" tidak terlihat dengan cream MAUPUN hijau-gelap (delta ${delta.toFixed(2)}) — ground-nya tidak cocok untuk keduanya`);
+    }
+  }
 
   // Global footer typography is deterministic too. Asking the model to place
   // the handle and page number repeatedly caused it to connect both corners
   // with a full-height sidebar. No panel is painted here: typography lands
   // directly on the full-bleed background.
+  // D5 — gen-carousel now reserves y>=1220 empty so this annotate is not buried under body type.
   if (globalGreen && slideLabel) {
     const footerFont = await resolveFooterFont();
     await convert([
@@ -313,6 +385,8 @@ async function main() {
     console.error(`no PNG slides in ${DIR}`);
     process.exit(1);
   }
+  // D1 — one kicker string for the whole deck (env or plan.json).
+  const kickerText = await resolveKickerText(DIR);
   let ok = 0;
   for (const name of entries) {
     const file = path.join(DIR, name);
@@ -329,7 +403,11 @@ async function main() {
       const slideLabel = slideNo
         ? `${String(slideNo).padStart(2, "0")}/${String(deckTotal).padStart(2, "0")}`
         : "";
-      await finalizeOne(file, { slideLabel: isClosing ? "" : slideLabel, isClosing });
+      await finalizeOne(file, {
+        slideLabel: isClosing ? "" : slideLabel,
+        isClosing,
+        kickerText,
+      });
       // closing slide: composite the real iPhone-splash (real iB logo — never
       // hallucinated) and the store badges into the reserved zones.
       if (isClosing) {
@@ -403,10 +481,25 @@ async function main() {
           "-morphology", "EdgeIn", "Octagon:1", "-threshold", "25%",
           "-format", "%[fx:mean]", "info:"]);
         const inkFrac = parseFloat(zone.stdout);
-        if (Number.isFinite(inkFrac) && inkFrac > 0.003) {
+
+        // AMBANG HARUS RELATIF TERHADAP TEKSTUR PLATE INI SENDIRI, BUKAN ANGKA MUTLAK.
+        // Ambang mutlak 0.003 ditera pada plate uji yang MULUS. Plate codex asli punya grain:
+        // area latar kosongnya sendiri terukur 3.7%-6.6% edges — 12-22x di atas ambang itu. Artinya
+        // gate ini akan MENOLAK setiap plate bertekstur, yaitu semua plate produksi, dan closing
+        // tidak akan pernah bisa dirender lagi begitu kuota kembali.
+        // Jadi: ukur potongan latar yang PASTI kosong pada plate yang sama sebagai basis, lalu
+        // tuntut zona phone tidak jauh lebih ramai daripada basis itu.
+        const baseRaw = await convert([file, "-alpha", "remove",
+          "-crop", `240x240+40+${1350 - 300}`, "+repage", "-colorspace", "gray",
+          "-morphology", "EdgeIn", "Octagon:1", "-threshold", "25%",
+          "-format", "%[fx:mean]", "info:"]);
+        const base = parseFloat(baseRaw.stdout);
+        const limit = Number.isFinite(base) ? Math.max(0.006, base * 1.8) : 0.006;
+        if (Number.isFinite(inkFrac) && inkFrac > limit) {
           throw new Error(
             `the closing slide's phone zone (${gw}x${gh} at ${gx},${gy}, incl. a ${GUTTER}px gutter) is ` +
-            `${(inkFrac * 100).toFixed(2)}% edges — that is TYPE OR ARTWORK, and the phone is about to be ` +
+            `${(inkFrac * 100).toFixed(2)}% edges vs ${(limit * 100).toFixed(2)}% allowed (tekstur plate ini ` +
+            `${(base * 100).toFixed(2)}%) — that is TYPE OR ARTWORK, and the phone is about to be ` +
             `pasted on top of it. Re-roll the plate: the headline must stay left of x=${TYPE_COL}.`);
         }
         // THE SHADOW IS DRAWN HERE, NOT BAKED INTO THE ASSET.
@@ -454,9 +547,10 @@ async function main() {
               `${Math.abs(centre - 540).toFixed(0)}px off-centre on a 1080px slide`);
           }
         }
-        console.log(`${name}: 1080x1350 + logo + phone + store badges`);
+        // D3 — no corner logo on closing
+        console.log(`${name}: 1080x1350 + phone + store badges` + (kickerText ? " + kicker" : ""));
       } else {
-        console.log(`${name}: 1080x1350 + logo`);
+        console.log(`${name}: 1080x1350 + logo` + (kickerText ? " + kicker" : ""));
       }
       // sign it. this is what makes a second run a no-op instead of a disaster.
       await convert([file, "-set", "comment", STAMP, file]);

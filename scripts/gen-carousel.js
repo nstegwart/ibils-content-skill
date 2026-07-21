@@ -45,14 +45,27 @@ const HARD_RULE = [
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
   "word 'Ibils' as a wordmark ANYWHERE. Draw NO handle, footer label, slide",
   "number, pagination or page-count text. Do not draw a placeholder for them.",
+  // D1 — kicker was model-drawn and drifted (cream@~245,240 vs amber@~155,152).
+  // finalize.js stamps one fixed kicker; the model must never paint it.
+  "Do NOT draw a kicker, section label, eyebrow chip, category tag, or any",
+  "'Ibils Educate / News / Insight / App / Education' label text ANYWHERE.",
   "Do not design any logo container or landing zone. For y=0..229, headline",
   "and meaningful graphics must end at x<=820. The BACKGROUND still spans the",
   "entire x=0..1079 canvas with no visual reservation or special region.",
+  // D1 reserve: fixed kicker lands top-left; leave that band empty (bg only).
+  "KICKER LANDING — leave x=0..520, y=0..150 as continuous background ONLY:",
+  "no text, no chip, no underline, no coloured pill. A fixed kicker is",
+  "composited there later at identical coordinates on every slide.",
   "No rectangle, card, badge, tab, darker patch, lighter patch, border, notch,",
   "vertical bar or rail. Below y=230, the full x=0..1079 width is normal design.",
   "Never draw a vertical boundary near x=800..1000 longer than 160 pixels.",
   "At y=300,500,750,1000,",
-  "the background at x=870 and x=1070 must be continuous—no sidebar or rail."
+  "the background at x=870 and x=1070 must be continuous—no sidebar or rail.",
+  // D5 — forbidding a footer is not enough; body text filled y>1220 and the
+  // handle was overpainted. Explicitly empty the strip finalize uses.
+  "FOOTER LANDING — the full-width strip y=1220..1349 must be EMPTY continuous",
+  "background: no body paragraph, no footnote, no caption, no decoration, no",
+  "horizontal rule. The handle and page number are composited there later."
 ].join("\n");
 
 const REFERENCE = [
@@ -94,23 +107,27 @@ const FORMAT = [
   "12% as background-only bleed with no text, footer, number, face, prop, or",
   "meaningful artwork. Never solve this with an inner frame or side rails.",
   "SAFE MARGIN — EVERY important element must sit at least 8% inside the LEFT",
-  "and RIGHT edges, and inside that central vertical safe area: all text, the",
-  "footer, the kicker, AND (when present) the COMPLETE",
+  "and RIGHT edges, and inside that central vertical safe area: all text AND",
+  "(when present) the COMPLETE",
   "mascot — his whole body, both arms, both hands, both boots, crown and cape",
   "— plus every prop he holds. NOTHING may be clipped by the canvas edge:",
   "not an arm, not a hand, not a held object, not a boot, not a letter. If the",
   "mascot or a prop does not fit, draw them SMALLER so the whole figure is",
   "inside the frame — a cut-off mascot or cropped prop means the slide is",
-  "rejected.",
+  "rejected. (Kicker + footer + logo are NOT drawn by you — they are composited.)",
   "Compose edge-to-edge: the background fills the whole 1080x1350 with no",
   "inner border, frame, sidebar, vertical rail, or empty margin band around",
   "the artwork. The background colour/texture must continue seamlessly to",
   "all four canvas edges. Usable poster width remains x=0..1079 everywhere",
   "except the small logo landing zone x=880..1079,y=0..229. Never turn that",
   "small corner landing zone into a full-height or partial-height side panel.",
-  "BOTTOM GEOMETRY — keep all meaningful content above y=1230. From y=1231",
-  "through y=1349, continue the SAME full-width background with no horizontal",
-  "boundary, footer band, strip, box, plate, tab, rectangle or colour change.",
+  // D5 — align empty strip with finalize handle/page landing (was y=1230; body
+  // still spilled into the SW handle). Strict empty from y=1220.
+  "BOTTOM GEOMETRY — keep ALL meaningful content (headline, body, mascot,",
+  "props, icons) entirely above y=1220. From y=1220 through y=1349, continue",
+  "the SAME full-width background only — no text, no horizontal boundary,",
+  "footer band, strip, box, plate, tab, rectangle or colour change. That",
+  "strip is reserved for the later-composited handle and page number.",
   TEXT_LANG_RULE,
   "No watermark, no signature, no extra text."
 ].join("\n");
@@ -142,7 +159,9 @@ const NOT_AI = [
 
 const BRANDING =
   "BRANDING — draw absolutely NO logo, logo container, 'Ibils' wordmark, " +
-  "social handle, footer label, slide number, pagination, or page-count text. " +
+  "social handle, footer label, slide number, pagination, page-count text, " +
+  // D1 — kicker is finalize-composited; model drawing it causes colour/position drift.
+  "kicker, section label, or 'Ibils …' eyebrow chip. " +
   "Do not create a sidebar, footer box, corner card, tab, plate, coloured block, " +
   "or placeholder for any of them. Background remains uninterrupted.";
 
@@ -222,10 +241,14 @@ function resolveStyle(plan) {
 
 function buildPrompt(slide, plan, total) {
   const style = resolveStyle(plan);
-  const noHimelPose = isNoHimelPose(slide.pose);
-  // Closing uses the hardened two-column plate from the current pipeline:
-  // type left, device right, no mascot collision risk.
-  const noHimel = slide.kind === "closing" || noHimelPose;
+  // D4 — closing KEEPS Himel (owner). Old code forced noHimel on closing, then
+  // the brief also asked for bottom-third empty + Himel bottom-left → cut legs.
+  // Empty pose on closing still means draw Himel; only an explicit no-himel pose bans him.
+  const poseStr = String(slide.pose || "").trim();
+  const noHimel =
+    slide.kind === "closing"
+      ? (poseStr ? isNoHimelPose(poseStr) : false)
+      : isNoHimelPose(slide.pose);
   const lines = [
     "Use your built-in NATIVE image-generation tool directly (no API key, no",
     "imagegen skill, no python). Generate ONE complete, finished Instagram",
@@ -263,9 +286,11 @@ function buildPrompt(slide, plan, total) {
     );
   }
 
+  // D1 — do NOT ask the model to render plan.kicker (that caused inter-slide drift).
   lines.push(
-    `Kicker / section label — render it EXACTLY as written, keep this mixed`,
-    `case, do NOT uppercase it: "${plan.kicker}".`,
+    "KICKER — do NOT draw any kicker/section label. finalize.js composites the",
+    `exact label later (for this deck it will be "${plan.kicker || ""}"). Leave`,
+    "the kicker landing zone empty as specified in HARD RULE.",
     "",
     FORMAT,
     "",
@@ -293,7 +318,9 @@ function buildPrompt(slide, plan, total) {
     );
   } else {
     lines.push(
-      `HIMEL POSE — draw him FRESH in this pose, do NOT copy a reference pose: ${slide.pose}.`
+      `HIMEL POSE — draw him FRESH in this pose, do NOT copy a reference pose: ${
+        poseStr || (slide.kind === "closing" ? "standing open-hand invite, full figure" : "explain")
+      }.`
     );
   }
 
@@ -301,33 +328,40 @@ function buildPrompt(slide, plan, total) {
     lines.push("This is a COVER — headline only, no body paragraph, no empty placeholder card.");
   }
   if (slide.kind === "closing") {
+    // D4 — non-colliding zones: Himel full-figure LEFT above the badge strip;
+    // right column empty for phone; y>=1100 empty for store badges.
+    // Never "Himel bottom-left" AND "whole bottom third empty" at once.
     lines.push(
       "CLOSING SLIDE — render it in the SAME category visual style as the other",
       "slides (this carousel's style).",
       "",
-      "THE SLIDE IS TWO COLUMNS. This is the whole layout and it is not negotiable:",
+      "LAYOUT — three reserved voids + one figure zone (not negotiable):",
       "",
-      "  LEFT COLUMN  (x = 0 to 560 of 1080) — the closing headline. Large, confident",
-      "  display type, set flush left, vertically around the middle. It MAY stack over",
-      "  two or three lines — that is wanted, it is the design. Every glyph, including",
-      "  descenders and the tail of the last letter, must END BEFORE x=560.",
+      "  HEADLINE (LEFT, upper-middle) — short CTA, large confident display type,",
+      "  flush left. May stack 2–3 lines. Every glyph, including descenders and the",
+      "  tail of the last letter, must END BEFORE x=560. If it does not fit, SET",
+      "  THE TYPE SMALLER or break earlier — never bleed right into the phone column.",
       "",
-      "  RIGHT COLUMN (x = 560 to 1080) — COMPLETELY EMPTY, plain textured background.",
-      "  Not one letter, not one shape, not one line, not one ornament crosses into it.",
-      "  A device mockup is composited there afterwards and ANYTHING you draw in this",
-      "  column will be either covered up or collided with.",
+      "  HIMEL (LEFT, mid band) — owner wants Himel on the closing. Draw him as a",
+      "  COMPLETE figure from crown to BOTH boot soles (no cropped calves/feet).",
+      "  Place him in the LEFT mid band roughly x=40..520, y=360..1080. His feet",
+      "  MUST end ABOVE y=1100 — the store-badge strip lives below that line.",
+      "  If he does not fit, DRAW HIM SMALLER so the whole body is inside the",
+      "  frame. NEVER solve overflow by cutting off his legs, boots, or cape.",
+      "  Do NOT put him in the right column or on the badge strip.",
       "",
-      "The single most common failure on this slide is a headline whose last word runs",
-      "long and pushes its final letters past x=560, where the phone lands on top of",
-      "them. If the headline does not fit, SET THE TYPE SMALLER or break the line",
-      "earlier. Never let it bleed right.",
+      "  RIGHT COLUMN (x = 560 to 1080) — COMPLETELY EMPTY plain textured background.",
+      "  Not one letter, shape, line, or ornament. A device mockup is composited",
+      "  there afterwards; anything you draw there will be covered or collided with.",
       "",
-      "The WHOLE BOTTOM THIRD must also stay plain, empty background — the store badges",
-      "are composited there.",
+      "  BADGE STRIP (y = 1100 to 1349, full width) — COMPLETELY EMPTY plain",
+      "  background only. Store badges are composited there later. This is a",
+      "  horizontal band, NOT 'the whole bottom third of the poster for Himel'.",
       "",
       "DO NOT draw a phone, a phone mockup, a logo, the iB mark, the word 'Ibils', or",
       "any store badge. DO NOT draw any card, panel, box, banner, button, or CTA strip",
-      "ANYWHERE. Do not draw Himel on the closing slide."
+      "ANYWHERE. Do NOT draw a top-right logo (closing carries brand via the phone",
+      "splash + store badges only)."
     );
   }
   lines.push(
@@ -341,7 +375,12 @@ function buildPrompt(slide, plan, total) {
 function runCodex(slide, plan, total) {
   return new Promise((resolve) => {
     const out = path.join(OUT_DIR, `${slide.name}.png`);
-    const noHimel = slide.kind === "closing" || isNoHimelPose(slide.pose);
+    // D4 — match buildPrompt: closing gets Himel refs unless pose explicitly bans him.
+    const poseStr = String(slide.pose || "").trim();
+    const noHimel =
+      slide.kind === "closing"
+        ? (poseStr ? isNoHimelPose(poseStr) : false)
+        : isNoHimelPose(slide.pose);
     const imgs = noHimel ? [] : [...HIMEL_REFS];
     const iArgs = [];
     for (const img of imgs) iArgs.push("-i", img);
