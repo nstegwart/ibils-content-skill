@@ -185,6 +185,36 @@ async function resolveKickerText(slidesDir) {
   return "";
 }
 
+async function resolveFooterConfig(slidesDir) {
+  // D1 — footer (handle + label) resolved from plan.json surface (primary), with env override.
+  // This fixes the regresi where direct node finalize.js calls (no CAROUSEL_LANG) drew no footer.
+  // English/global surface → handle + label; Indonesia → no handle (label optional but page numbers required per task).
+  for (const p of [
+    path.join(slidesDir, "plan.json"),
+    path.join(slidesDir, "..", "plan.json"),
+  ]) {
+    try {
+      const j = JSON.parse(await fs.readFile(p, "utf8"));
+      const surface = String(j.surface || "").toLowerCase();
+      const lang = String(j.lang || process.env.CAROUSEL_LANG || "").toLowerCase();
+      const style = String(j.style || "").toLowerCase();
+      const isGlobal = surface.includes("global") || lang === "en" ||
+                       ["global-green", "marketing"].includes(style) ||
+                       surface.includes("en");
+      const handle = isGlobal ? "@ibils.global" : "";
+      return { global: isGlobal, handle };
+    } catch {
+      /* try next or fallback */
+    }
+  }
+  // env fallback (as override, never sole source)
+  const lang = String(process.env.CAROUSEL_LANG || "").toLowerCase();
+  const style = String(process.env.CAROUSEL_STYLE || "").toLowerCase();
+  const isGlobal = lang === "en" || ["global-green", "marketing"].includes(style);
+  const handle = isGlobal ? "@ibils.global" : "";
+  return { global: isGlobal, handle };
+}
+
 async function finalizeOne(file, { slideLabel = "", isClosing = false, kickerText = "" } = {}) {
   const id = await identify(["-format", "%w %h", file]);
   const [w, h] = id.stdout.trim().split(/\s+/).map(Number);
@@ -416,13 +446,30 @@ async function finalizeOne(file, { slideLabel = "", isClosing = false, kickerTex
   // with a full-height sidebar. No panel is painted here: typography lands
   // directly on the full-bleed background.
   // D5 — gen-carousel now reserves y>=1220 empty so this annotate is not buried under body type.
-  if (globalGreen && slideLabel) {
+  // NEW: gate before footer to prevent body ink collision (task CACAT 2). Threshold tuned for 13.4% bad vs 0-1% clean.
+  // Handle box checked only for global decks (ID draws label only).
+  if (slideLabel) {
     const footerFont = await resolveFooterFont();
+    const { handle: footerHandle, global: isGlobalFooter } = await resolveFooterConfig(DIR);
+
+    // gate: check handle box before drawing. Use same density method as kicker rows.
+    if (isGlobalFooter) {
+      const handleCrop = await convert([file, "-crop", "350x46+80+1242", "+repage",
+        "-colorspace", "gray", "-threshold", "50%", "-format", "%[fx:mean]", "info:"]);
+      const inkFrac = parseFloat(handleCrop.stdout);
+      if (Number.isFinite(inkFrac) && inkFrac > 0.03) {
+        throw new Error(`handle box already has ink (${(inkFrac*100).toFixed(1)}% > 3% threshold) — footer would overwrite body text. Re-roll slide. Threshold separates 13.4% (bad examples like item-15841) from 0-1% (clean).`);
+      }
+    }
+
+    const handleArgs = isGlobalFooter ? ["-gravity", "southwest", "-annotate", "+80+68", "@ibils.global"] : [];
     await convert([
       file,
       "-font", footerFont, "-pointsize", "34", "-fill", "#FBF6E9",
-      "-gravity", "southwest", "-annotate", "+80+68", "@ibils.global",
-      "-gravity", "southeast", "-annotate", "+70+68", slideLabel,
+      ...handleArgs,
+      "-gravity", "southeast",
+      "-annotate", "+70+68",
+      slideLabel,
       file
     ]);
   }

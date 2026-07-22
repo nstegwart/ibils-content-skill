@@ -74,7 +74,10 @@ const HARD_RULE = [
   // handle was overpainted. Explicitly empty the strip finalize uses.
   "FOOTER LANDING — the full-width strip y=1220..1349 must be EMPTY continuous",
   "background: no body paragraph, no footnote, no caption, no decoration, no",
-  "horizontal rule. The handle and page number are composited there later."
+  "horizontal rule. The handle and page number are composited there later.",
+  "",
+  "BACKGROUND RULE — MUST be single full-bleed color or continuous texture edge-to-edge. FORBIDDEN:",
+  "panel, card, block, frame, border, area, or any region with different color. No visual reservation or special region. The background colour/texture must continue seamlessly to all four canvas edges."
 ].join("\n");
 
 const REFERENCE = [
@@ -130,10 +133,9 @@ const FORMAT = [
   "all four canvas edges. Usable poster width remains x=0..1079 everywhere",
   "except the small logo landing zone x=880..1079,y=0..229. Never turn that",
   "small corner landing zone into a full-height or partial-height side panel.",
-  // D5 — align empty strip with finalize handle/page landing (was y=1230; body
-  // still spilled into the SW handle). Strict empty from y=1220.
+  // D5 — align empty strip with finalize handle/page landing. Strict empty from y=1200 (task: body paragraph MUST end above y=1200).
   "BOTTOM GEOMETRY — keep ALL meaningful content (headline, body, mascot,",
-  "props, icons) entirely above y=1220. From y=1220 through y=1349, continue",
+  "props, icons) entirely above y=1200. From y=1200 through y=1349, continue",
   "the SAME full-width background only — no text, no horizontal boundary,",
   "footer band, strip, box, plate, tab, rectangle or colour change. That",
   "strip is reserved for the later-composited handle and page number.",
@@ -351,25 +353,24 @@ function buildPrompt(slide, plan, total) {
       "  under it. NOTHING may enter it — not the first line of the headline, not an",
       "  ascender, not an ornament.",
       "",
-      "  HEADLINE (LEFT, upper-middle) — short CTA, large confident display type,",
-      "  flush left. Its topmost glyph must START BELOW y=200 (the kicker band is",
-      "  above it). May stack 2–3 lines. Every glyph, including descenders and the",
-      "  tail of the last letter, must END BEFORE x=560. If it does not fit, SET",
-      "  THE TYPE SMALLER or break earlier — never bleed right into the phone column.",
+      "  HEADLINE (FULL WIDTH, y = 200 to 470) — short CTA, large confident display type,",
+      "  flush left. May stack 1-2 lines. ALL glyphs, including descenders and the",
+      "  tail of the last letter, MUST end BEFORE y=470. If it does not fit, SET",
+      "  THE TYPE SMALLER or break earlier.",
       "",
-      "  HIMEL (LEFT, mid band) — owner wants Himel on the closing. Draw him as a",
+      "  HIMEL (LEFT) — owner wants Himel on the closing. Draw him as a",
       "  COMPLETE figure from crown to BOTH boot soles (no cropped calves/feet).",
-      "  Place him in the LEFT mid band roughly x=40..520, y=360..1080. His feet",
-      "  MUST end ABOVE y=1100 — the store-badge strip lives below that line.",
+      "  Place him in the LEFT mid band roughly x=40..520, y=490..1120. His feet",
+      "  MUST end ABOVE y=1130 — the store-badge strip lives below that line.",
       "  If he does not fit, DRAW HIM SMALLER so the whole body is inside the",
       "  frame. NEVER solve overflow by cutting off his legs, boots, or cape.",
       "  Do NOT put him in the right column or on the badge strip.",
       "",
-      "  RIGHT COLUMN (x = 560 to 1080) — COMPLETELY EMPTY plain textured background.",
+      "  RIGHT COLUMN (x = 560 to 1080, y = 480 to 1130) — COMPLETELY EMPTY plain textured background.",
       "  Not one letter, shape, line, or ornament. A device mockup is composited",
       "  there afterwards; anything you draw there will be covered or collided with.",
       "",
-      "  BADGE STRIP (y = 1100 to 1349, full width) — COMPLETELY EMPTY plain",
+      "  BADGE STRIP (y = 1150 to 1349, full width) — COMPLETELY EMPTY plain",
       "  background only. Store badges are composited there later. This is a",
       "  horizontal band, NOT 'the whole bottom third of the poster for Himel'.",
       "",
