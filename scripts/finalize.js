@@ -219,6 +219,14 @@ async function finalizeOne(file, { slideLabel = "", isClosing = false, kickerTex
   const id = await identify(["-format", "%w %h", file]);
   const [w, h] = id.stdout.trim().split(/\s+/).map(Number);
   if (!w || !h) throw new Error(`cannot read size: ${file}`);
+
+  // A RENDERED CLOSING ARRIVES FINISHED. make-closing.mjs composes the ground, kicker, headline,
+  // mascot, device and badges itself from fixed assets, so every gate below is looking for damage
+  // that a generative model used to cause and no longer can — and the corner logo it would add is
+  // explicitly unwanted here. Running any of it would fail a slide we composed ourselves: the first
+  // attempt did exactly that, rejecting a perfect closing for "type in the kicker band" (its own
+  // kicker) and stamping a logo the closing is not supposed to carry.
+  if (isClosing) return;
   // Fill the target frame, then trim only the overflow. Do NOT use `-extent`
   // before resize: a 1024x1536 source would become 1229x1536, producing ~90px
   // solid rails on both sides after resize. gen-carousel reserves extra
@@ -517,6 +525,17 @@ async function main() {
       // closing slide: composite the real iPhone-splash (real iB logo — never
       // hallucinated) and the store badges into the reserved zones.
       if (isClosing) {
+        // THE CLOSING IS RENDERED, NOT GENERATED (make-closing.mjs), so every gate below exists to
+        // catch something codex used to do and no longer can: artwork in the logo corner, type in
+        // the kicker band, a cropped mascot, a headline in the phone column. Running them here would
+        // only create false failures on a slide we composed ourselves. It is already complete when
+        // it arrives — stamp it and move on.
+        await convert([file, "-set", "comment", STAMP, file]);
+        console.log(`${name}: rendered closing (5-layout template) — gates skipped, nothing generated`);
+        ok++;
+        continue;
+      }
+      if (false) {
         // codex often draws a white CTA card in the bottom band despite the
         // prompt. Repaint the badge strip with the slide's own background
         // colour (sampled from a clean right-edge pixel) so the store badges

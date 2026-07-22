@@ -12,7 +12,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+const HERE_DIR = path.dirname(fileURLToPath(import.meta.url));
+import { spawn, spawnSync } from "node:child_process";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS = path.join(HERE, "..", "assets");
@@ -512,7 +513,28 @@ async function main() {
     return false;
   }
 
-  const results = await Promise.all(plan.slides.map((s) => genSlide(s)));
+  // THE CLOSING IS NO LONGER GENERATED. It is rendered by scripts/make-closing.mjs from five
+  // fixed layouts, because every element on it — ground, headline, mascot, device, badges, kicker —
+  // is already ours and already fixed. Asking a model to draw it could only add variance, and it
+  // did: across 473 closings, 451 had the headline running into the phone column and 314 carried a
+  // corner logo that was supposed to be gone. Sending it to codex also made it the slide that held
+  // up the most re-rolls. Skipping it here removes the defect class instead of gating it.
+  const generatable = plan.slides.filter((s) => s.kind !== "closing");
+  const results = await Promise.all(generatable.map((s) => genSlide(s)));
+  // render the closing deterministically, from the plan's own headline
+  const closing = plan.slides.find((s) => s.kind === "closing");
+  if (closing) {
+    const m = /HEADLINE:\s*"([^"]*)"/i.exec(closing.brief || "");
+    const head = (m ? m[1] : (closing.brief || "")).trim().slice(0, 120);
+    const n = String(plan.slides.indexOf(closing) + 1).padStart(2, "0");
+    const out = path.join(OUT_DIR, `${n}-closing.png`);
+    const seed = path.basename(path.dirname(PLAN_PATH));   // item-XXXX -> stable per carousel
+    const r = spawnSync(process.execPath, [path.join(HERE_DIR, "make-closing.mjs"), head, out,
+      "--kicker", String(plan.kicker || ""), "--seed", seed], { encoding: "utf8" });
+    if (r.status !== 0) console.error(`closing: FAILED — ${(r.stderr || "").slice(-300)}`);
+    else console.log((r.stdout || "").trim());
+  }
+
   const ok = results.filter(Boolean).length;
   console.log(`generated ${ok}/${total} raw slides -> ${OUT_DIR}`);
   if (ok < total) process.exit(1);
