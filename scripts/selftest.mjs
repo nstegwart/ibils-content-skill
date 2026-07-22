@@ -601,16 +601,18 @@ await test("ASSET: the shadow is NOT baked in — it belongs to the composite", 
   if (!/-shadow/.test(fin)) throw new Error("the asset has no shadow and finalize does not draw one — the phone now sits flat on the slide");
 });
 
-await test("CLOSING: the store badges are CENTRED", async () => {
-  // "posisi playstore dan appstore berantakan". A +100 x-offset had been sitting in finalize to dodge
-  // Himel, who used to stand in the bottom-left of the closing slide. Himel is no longer drawn there.
-  // The offset stopped dodging anything years of edits ago and just pushed the badges 100px off-centre.
-  // Stale geometry outlives the thing it was avoiding, and it never announces itself.
+await test("CLOSING: the store badges sit under the PHONE column", async () => {
+  // "posisi playstore dan appstore berantakan" began as a stale +100 offset left over from dodging
+  // Himel in the bottom-left. Then the owner moved them again: centred on the slide they sat under
+  // the MASCOT rather than under the device they advertise. Both regressions are the same shape —
+  // a hardcoded x that no longer relates to anything on the slide.
   const src = await liveCode("scripts/finalize.js");
-  const m = /STORE_BADGES[\s\S]{0,200}?"-gravity", "south", "-geometry", "\+(-?\d+)\+/.exec(src);
-  if (!m) throw new Error("cannot find the badge placement");
-  if (Number(m[1]) !== 0) throw new Error(`the badges are composited ${m[1]}px off-centre`);
-  if (!/badges are centred at x=/.test(src)) throw new Error("nothing MEASURES the badge centring on the rendered slide — the offset can drift back silently");
+  // the offset must be DERIVED from the phone column, never a literal
+  if (!/BADGE_CX\s*=\s*Math\.round\(\(PHONE_COL/.test(src)) {
+    throw new Error("the badge x-offset is not derived from PHONE_COL — it will drift out of relation to the phone again");
+  }
+  if (!/`\+\$\{BADGE_DX\}\+95`/.test(src)) throw new Error("the badge composite does not use the derived offset");
+  if (!/badges are centred at x=/.test(src)) throw new Error("nothing MEASURES the badge placement on the rendered slide");
 });
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
