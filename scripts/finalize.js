@@ -104,7 +104,12 @@ const TYPE_COL = 560;    // x < this belongs to the headline. The phone may neve
 const PHONE_COL = [TYPE_COL, 1080];
                          // 778 = the OLD asset's exact height, so the new hi-res source lands at
                          // the same on-slide size the shipped decks already use.
-const BADGES_W = 480;    // store badge strip, width
+const BADGES_W = 480;    // store badge strip, width (content decks)
+// CLOSING: the badges belong UNDER THE PHONE, not under the mascot (owner, 2026-07-22). Centred on
+// the slide they sat beneath Himel's boots and read as unrelated to the device they advertise.
+// Both are now centred on the phone column, so the device and the two badges form one right-hand
+// block. Narrower too — a 480px strip under a 298px phone is wider than the thing it points at.
+const BADGES_W_CLOSING = 400;
 const STORE_BADGES = path.join(ASSETS, "store-badges.png");
 const CLOSING_PHONE = path.join(ASSETS, "closing-phone.png");
 const FOOTER_FONT_CANDIDATES = [
@@ -535,6 +540,9 @@ async function main() {
         //
         // A shadow depends on the surface under it, and an asset cannot know what it will be dropped
         // onto. So it is drawn at the composite, where the background is actually known.
+        // pusat kolom phone, relatif terhadap pusat slide
+        const BADGE_CX = Math.round((PHONE_COL[0] + PHONE_COL[1]) / 2);
+        const BADGE_DX = BADGE_CX - 540;
         const gx0 = dx >= 0 ? `+${dx}` : `${dx}`;
         const gy0 = dy >= 0 ? `+${dy}` : `${dy}`;
         await convert([
@@ -555,8 +563,9 @@ async function main() {
         // which is what "posisi playstore dan appstore berantakan" actually was. Stale geometry
         // outlives the thing it was avoiding, and it never announces itself.
         await convert([
-          file, "(", STORE_BADGES, "-resize", `${BADGES_W}x`, ")",
-          "-gravity", "south", "-geometry", "+0+95", "-composite",
+          file, "(", STORE_BADGES, "-resize", `${BADGES_W_CLOSING}x`, ")",
+          // derived from the phone column, not hardcoded — if the column moves, the badges follow
+          "-gravity", "south", "-geometry", `+${BADGE_DX}+95`, "-composite",
           file
         ]);
         // and PROVE they are centred. This is one line, and the defect it catches was visible to the
@@ -581,16 +590,16 @@ async function main() {
         const m = bstrip && /^(\d+)x(\d+)\+(\d+)\+/.exec(bstrip.stdout.trim());
         if (m) {
           const [bw, bh, bx] = [Number(m[1]), Number(m[2]), Number(m[3])];
-          const badgeShaped = Math.abs(bw - BADGES_W) <= 60 && bh <= 110;
+          const badgeShaped = Math.abs(bw - BADGES_W_CLOSING) <= 60 && bh <= 110;
           if (badgeShaped) {
             const centre = bx + bw / 2;
-            if (Math.abs(centre - 540) > 6) {
-              throw new Error(`the store badges are centred at x=${centre.toFixed(0)}, not 540 — they are ` +
-                `${Math.abs(centre - 540).toFixed(0)}px off-centre on a 1080px slide`);
+            if (Math.abs(centre - BADGE_CX) > 8) {
+              throw new Error(`the store badges are centred at x=${centre.toFixed(0)}, not ${BADGE_CX} — ` +
+                `they are ${Math.abs(centre - BADGE_CX).toFixed(0)}px off the phone column they belong under`);
             }
           } else {
             console.log(`${name}: badge-centring check skipped — other art shares the footer strip ` +
-              `(dark mass ${bw}x${bh}, expected ~${BADGES_W}x67)`);
+              `(dark mass ${bw}x${bh}, expected ~${BADGES_W_CLOSING}x60)`);
           }
         }
         // D3 — no corner logo on closing
