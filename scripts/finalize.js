@@ -346,6 +346,36 @@ async function finalizeOne(file, { slideLabel = "", isClosing = false, kickerTex
   // family as the footer so a deck never mixes model-drawn amber with cream labels.
   if (kickerText) {
     const kickerFont = await resolveFooterFont();
+    // THE KICKER BAND MUST BE EMPTY BEFORE WE STAMP INTO IT.
+    // The prompt reserved a headline band and a footer band but never the kicker's own strip, so a
+    // closing headline set high enough put "Paper" directly under "Ibils Educate" and the label
+    // printed on top of the P. Reserving space for a composite is not optional just because the
+    // composite is small.
+    // Count TYPE, and judge it against this plate's own empty ground.
+    //
+    // The first version averaged edge-density over a 420x80 box and let a headline through: the
+    // ascenders of "Paper" occupied only the lower rows, so the mean stayed under threshold while
+    // the label still printed across them. Averaging over a box hides a collision confined to part
+    // of it — the same error that let a phone land on the word "number" months ago.
+    //
+    // Type here is cream on a dark ground, so measure how much of the band is markedly brighter
+    // than a patch of this plate that is definitely empty, and check the band ROW BY ROW so a
+    // collision in a few rows cannot be averaged away.
+    const groundLuma = parseFloat((await convert([file, "-crop", "200x60+820+1000", "+repage",
+      "-colorspace", "gray", "-format", "%[fx:mean*255]", "info:"])).stdout);
+    const cutoff = Math.min(240, (Number.isFinite(groundLuma) ? groundLuma : 60) + 60);
+    let worst = 0;
+    for (let by = 70; by <= 150; by += 10) {
+      const row = parseFloat((await convert([file, "-crop", `430x10+72+${by}`, "+repage",
+        "-colorspace", "gray", "-threshold", `${((cutoff / 255) * 100).toFixed(1)}%`,
+        "-format", "%[fx:mean]", "info:"])).stdout);
+      if (Number.isFinite(row)) worst = Math.max(worst, row);
+    }
+    if (worst > 0.02) {
+      throw new Error(`the kicker band (y=70..150) already has type in it (${(worst * 100).toFixed(1)}% of a row ` +
+        `is brighter than the ground) — the label would print on top of the headline. ` +
+        `Re-roll: the headline must start below y=200.`);
+    }
     const backup = `${file}.pre-kicker.png`;
     await convert([file, backup]);
     // GAMBAR, UKUR HASILNYA, PERBAIKI KALAU TIDAK TERLIHAT.
@@ -473,7 +503,40 @@ async function main() {
         const phoneW = Math.round(PHONE_H * 0.481);      // the mockup's aspect
         // centred inside the phone column — this is what buys the air on BOTH sides of the device
         const zoneX = Math.round((PHONE_COL[0] + PHONE_COL[1] - phoneW) / 2);
-        const zoneY = Math.round((1350 - PHONE_H) / 2) - 30;
+        // HIMEL MUST STAND ON THE GROUND, NOT END IN MID-AIR.
+        //
+        // D4 regressed silently: a re-roll came back with his boots cut off again and every gate
+        // reported success, because nothing looked at him. A figure that terminates in a hard
+        // horizontal edge with background directly beneath it has been amputated — a real pair of
+        // feet tapers and meets the ground. So: find the lowest row of mascot ink in the left
+        // column, and require the rows just above it to NARROW. A clean cut stays wide to the last
+        // row; real boots do not.
+        const inkRow = async (y, h) => parseFloat((await convert([file,
+          "-crop", `520x${h}+40+${y}`, "+repage", "-colorspace", "gray",
+          "-threshold", "62%", "-format", "%[fx:mean]", "info:"])).stdout) || 0;
+        let lastY = 0;
+        for (let y = 900; y <= 1180; y += 10) if (await inkRow(y, 10) > 0.004) lastY = y;
+        if (lastY >= 900) {
+          const atEnd = await inkRow(lastY, 10);
+          const above = await inkRow(lastY - 40, 10);
+          // boots taper: the final rows must carry clearly less ink than 40px higher up
+          if (above > 0.004 && atEnd / above > 0.85) {
+            throw new Error(`Himel appears cut off at y=${lastY + 10}: the figure is still ` +
+              `${(atEnd * 100).toFixed(1)}% wide at its last row vs ${(above * 100).toFixed(1)}% just above — ` +
+              `feet taper, a crop does not. Re-roll with the whole figure inside the frame.`);
+          }
+        }
+
+        // THE PHONE SITS ON THE BADGES, NOT IN THE MIDDLE OF THE FRAME.
+        //
+        // Centring it vertically left a 240px hole between the device and the badges beneath it
+        // while Himel's boots ran 150px further down the opposite column — the right side read as
+        // floating and top-heavy. The device and the badges are one block, so the phone's position
+        // is measured UP FROM the badges rather than centred in the frame: change the badge margin
+        // and the phone follows, instead of the two drifting apart again.
+        const BADGE_TOP = 1350 - 95 - 60;          // badge margin + badge height
+        const PHONE_BADGE_GAP = 100;
+        const zoneY = BADGE_TOP - PHONE_BADGE_GAP - PHONE_H;
         const dx = zoneX + Math.round(phoneW / 2) - 540;    // gravity-center offsets
         const dy = zoneY + Math.round(PHONE_H / 2) - 675;
 
