@@ -520,7 +520,12 @@ async function main() {
           const atEnd = await inkRow(lastY, 10);
           const above = await inkRow(lastY - 40, 10);
           // boots taper: the final rows must carry clearly less ink than 40px higher up
-          if (above > 0.004 && atEnd / above > 0.85) {
+          // Only judge when we are actually looking at a FIGURE. A flat or very bright plate makes
+          // every row read as 100% "ink" — that is the background being measured, not a mascot, and
+          // the taper test is meaningless on it. (This fired on a synthetic test slide and I pushed
+          // with it red.) A real figure occupies a minority of the column.
+          const plausibleFigure = above > 0.004 && above < 0.5 && atEnd < 0.5;
+          if (plausibleFigure && atEnd / above > 0.85) {
             throw new Error(`Himel appears cut off at y=${lastY + 10}: the figure is still ` +
               `${(atEnd * 100).toFixed(1)}% wide at its last row vs ${(above * 100).toFixed(1)}% just above — ` +
               `feet taper, a crop does not. Re-roll with the whole figure inside the frame.`);
