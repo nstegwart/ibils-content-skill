@@ -505,30 +505,44 @@ async function main() {
         const zoneX = Math.round((PHONE_COL[0] + PHONE_COL[1] - phoneW) / 2);
         // HIMEL MUST STAND ON THE GROUND, NOT END IN MID-AIR.
         //
-        // D4 regressed silently: a re-roll came back with his boots cut off again and every gate
-        // reported success, because nothing looked at him. A figure that terminates in a hard
-        // horizontal edge with background directly beneath it has been amputated — a real pair of
-        // feet tapers and meets the ground. So: find the lowest row of mascot ink in the left
-        // column, and require the rows just above it to NARROW. A clean cut stays wide to the last
-        // row; real boots do not.
-        const inkRow = async (y, h) => parseFloat((await convert([file,
-          "-crop", `520x${h}+40+${y}`, "+repage", "-colorspace", "gray",
-          "-threshold", "62%", "-format", "%[fx:mean]", "info:"])).stdout) || 0;
-        let lastY = 0;
-        for (let y = 900; y <= 1180; y += 10) if (await inkRow(y, 10) > 0.004) lastY = y;
-        if (lastY >= 900) {
-          const atEnd = await inkRow(lastY, 10);
-          const above = await inkRow(lastY - 40, 10);
-          // boots taper: the final rows must carry clearly less ink than 40px higher up
-          // Only judge when we are actually looking at a FIGURE. A flat or very bright plate makes
-          // every row read as 100% "ink" — that is the background being measured, not a mascot, and
-          // the taper test is meaningless on it. (This fired on a synthetic test slide and I pushed
-          // with it red.) A real figure occupies a minority of the column.
-          const plausibleFigure = above > 0.004 && above < 0.5 && atEnd < 0.5;
-          if (plausibleFigure && atEnd / above > 0.85) {
-            throw new Error(`Himel appears cut off at y=${lastY + 10}: the figure is still ` +
-              `${(atEnd * 100).toFixed(1)}% wide at its last row vs ${(above * 100).toFixed(1)}% just above — ` +
-              `feet taper, a crop does not. Re-roll with the whole figure inside the frame.`);
+        // The first version of this test assumed FEET TAPER — that the last row of the figure must
+        // be narrower than the rows above it. That is geometrically wrong: a BOOT SOLE FLARES, it is
+        // wider than the ankle above it. So a perfectly complete pair of boots failed, and the gate
+        // blocked six consecutive re-rolls of a slide that was already correct. I measured the wrong
+        // property again — one that happened to hold on the single cropped example I designed it
+        // against, not one that actually separates a crop from a foot.
+        //
+        // What genuinely separates them is the SHAPE OF THE BOTTOM EDGE:
+        //   a crop  -> a straight horizontal line: every inked column ends on the same row
+        //   real feet -> heels, toes and the gap between the boots, so the last inked row VARIES
+        // So sample columns across the mascot band, find where the ink ends in each, and measure how
+        // much those endings vary. A ruler-straight ending is an amputation.
+        const COLS = [];
+        for (let x = 60; x <= 540; x += 30) COLS.push(x);
+        const lastInk = async (x) => {
+          for (let y = 1240; y >= 880; y -= 8) {
+            const v = parseFloat((await convert([file, "-crop", `30x8+${x}+${y}`, "+repage",
+              "-colorspace", "gray", "-threshold", "62%", "-format", "%[fx:mean]", "info:"])).stdout) || 0;
+            if (v > 0.06) return y;
+          }
+          return null;
+        };
+        const ends = (await Promise.all(COLS.map(lastInk))).filter((v) => v !== null);
+        if (ends.length >= 5) {
+          const mean = ends.reduce((a, b) => a + b, 0) / ends.length;
+          const sd = Math.sqrt(ends.reduce((a, b) => a + (b - mean) ** 2, 0) / ends.length);
+          // A straight edge across most of the figure's width is a cut. Real boots vary by tens of
+          // pixels (heel vs toe vs the gap between them).
+          // A SATURATED PLATE IS NOT A FIGURE. On a flat or very bright slide every column reads as
+          // "ink" from the very first row scanned, so all endings equal the scan ceiling and the
+          // variance is exactly zero — which looks like a perfectly straight cut. That is the
+          // background being measured. (It turned the selftest red; the same trap as the taper
+          // version.) A real mascot ends somewhere INSIDE the band, not at its edge.
+          const saturated = ends.every((y) => y >= 1232);
+          if (!saturated && sd < 6 && ends.length >= COLS.length * 0.55) {
+            throw new Error(`Himel appears cut off: the figure's bottom edge is a straight line — ` +
+              `${ends.length} sampled columns all end within ${sd.toFixed(1)}px of y=${mean.toFixed(0)}. ` +
+              `Real boots vary (heel, toe, the gap between them). Re-roll with the whole figure in frame.`);
           }
         }
 
