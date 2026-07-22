@@ -65,10 +65,16 @@ function resolveLogoCard() {
     return LOGO_ID_TEAL;
   }
   if (override === "card" || override === "plate") return LOGO_CARD_PLATE;
-  if (override === "mark") return LOGO_MARK;
+  if (override === "mark") return LOGO_GLOBAL;   // mark variant retired — see below
   if (override && override.endsWith(".png")) return path.resolve(override);
-  // D2 default: transparent white mark blends on any ground (no plate square)
-  return LOGO_MARK;
+  // D2 — USE THE ASSET THE OWNER SUPPLIED. The previous default was a white "mark" I derived from
+  // the card myself with a threshold chain, and I wired it in as the default for every slide WITHOUT
+  // EVER RENDERING IT TO LOOK AT. The chain was inverted (`-negate` then `-transparent black` deleted
+  // the glyph and kept its background), so all eight slides of a deck shipped with a chopped white
+  // rectangle where the logo belongs. A command exiting 0 is not evidence that the pixels are right.
+  // ibils-logo-card-global.png is the supplied brand asset; it is the default, and nothing here
+  // synthesises a logo again.
+  return LOGO_GLOBAL;
 }
 const LOGO_CARD = resolveLogoCard();
 
@@ -236,9 +242,27 @@ async function finalizeOne(file, { slideLabel = "", isClosing = false, kickerTex
     if ([rr, rg, rb, nr, ng, nb].every(Number.isFinite)) {
       const d = Math.hypot(rr - nr, rg - ng, rb - nb);
       // 0.06 in 0..1 channel space ≈ a clearly different solid plate (item-5408 panel was ~0.09).
-      if (!globalGreen && d > 0.06) {
+      // COMPARE THE CORNER WITH WHAT IS RIGHT NEXT TO IT, NOT WITH A DISTANT STRIP.
+      //
+      // The reference used to be an 80px strip down the LEFT edge — which on a normal slide is full
+      // of HEADLINE TEXT. Measured on a legitimately empty corner: corner rgb(6,52,43) flat at
+      // stddev 0.002, left strip rgb(51,87,77) because cream type sits in it. The gate read that gap
+      // as "a painted plate" and refused a perfectly clean slide. A reference for "what does empty
+      // background look like here" has to be empty itself.
+      //
+      // The ring immediately around the corner is the right reference: it tracks the vignette (so a
+      // gradient no longer looks like a plate), and a plate painted INTO the corner still announces
+      // itself, because a plate has a hard boundary where it meets that ring.
+      // tepat DI BAWAH pojok: sama-sama tepi kanan, jadi vignette-nya sebanding, dan
+      // di luar zona yang dipesan untuk logo.
+      const ring = await convert([file, "-alpha", "remove",
+        "-crop", "280x150+800+300", "+repage", "-resize", "1x1!",
+        "-format", "%[fx:r],%[fx:g],%[fx:b]", "info:"]);
+      const [kr, kg, kb] = parseRGB(ring);
+      const dRing = Math.max(Math.abs(nr - kr), Math.abs(ng - kg), Math.abs(nb - kb));
+      if (!globalGreen && dRing > 0.10) {
         throw new Error(
-          `the reserved top-right corner is a solid plate (Δcolour ${d.toFixed(3)} vs left strip) — ` +
+          `the reserved top-right corner is a solid plate (Δcolour ${dRing.toFixed(3)} vs the ring beside it) — ` +
           `codex painted a badge/card there. Logo would land on it. Re-roll this slide.`);
       }
     }
@@ -420,20 +444,20 @@ async function main() {
         // fill (even the right colour) shows as a visible patch on textured
         // newsprint; tiling real texture blends invisibly.
         const tag = path.basename(file, ".png");
-        const srcStrip = path.join(DIR, `.bg-src-${tag}.png`);
-        const patchTile = path.join(DIR, `.bg-patch-${tag}.png`);
-        // Sample strip far from any branding — no top-right logo on closing.
-        const STRIP = { x: 990, y: 270, w: 80, h: 260 };
-        try {
-          await convert([file, "-crop", `${STRIP.w}x${STRIP.h}+${STRIP.x}+${STRIP.y}`, "+repage", srcStrip]);
-          await convert(["-size", "690x260", "tile:" + srcStrip, patchTile]);
-          await convert([
-            file, patchTile, "-geometry", "+390+1040", "-composite", file
-          ]);
-        } finally {
-          await fs.rm(srcStrip, { force: true }).catch(() => {});
-          await fs.rm(patchTile, { force: true }).catch(() => {});
-        }
+        // THE BLIND BACKGROUND PATCH IS GONE.
+        //
+        // It sampled an 80x260 strip from the upper right and tiled it over 690x260 at the bottom to
+        // erase any CTA card codex might have painted there. Two things were wrong with that:
+        //
+        //   1. The slide is vignetted, so a patch lifted from one region does not match the ground of
+        //      another. It read as a flat rectangle with hard corners across the lower third — the
+        //      "kotak putih" the owner spotted at full resolution.
+        //   2. It painted over WHATEVER was there, including Himel's legs, which legitimately stand
+        //      in that band. A cleanup that cannot tell junk from the mascot is not a cleanup.
+        //
+        // The footer strip is now RESERVED in the prompt (D5) and the gates below detect intruding
+        // artwork. Detect and refuse; never paint over the picture and call it clean.
+
         // *** THE PHONE MUST LAND IN EMPTY SPACE, NOT ON THE TYPE. ***
         //
         // This is the bug the owner called "rusak total", and it has now shipped TWICE — once on the
@@ -537,14 +561,36 @@ async function main() {
         ]);
         // and PROVE they are centred. This is one line, and the defect it catches was visible to the
         // owner from across the room while every gate in this file reported success.
+        // PROVE THE BADGES ARE CENTRED — BUT ONLY WHEN THE MEASUREMENT CAN MEAN ANYTHING.
+        //
+        // The badges are composited with `-gravity south -geometry +0+...`, so centring is
+        // deterministic by construction; the pixel check exists to catch a bad offset creeping into
+        // that constant. But the closing legitimately has HIMEL standing in this same strip, and no
+        // amount of thresholding separates them: his boots are black ink over a solid dark sole, so
+        // "dark pixels" and even a morphological open both swallow him whole. Measured: a clean
+        // strip gives bbox 470x67+305 (centre 540, exact); the same strip with the mascot gives
+        // 993x147+61, and the gate failed a slide whose badges were perfectly placed.
+        //
+        // A gate that cannot tell the thing it measures from something else in the frame must say so
+        // rather than convict. So: measure, and only judge when the dark mass is BADGE-SHAPED —
+        // roughly the composited width and confined to the badge rows. Otherwise report that the
+        // check was skipped. A skipped check is honest; a false failure is not.
         const bstrip = await convert([file, "-crop", "1080x180+0+1150", "+repage",
-          "-fuzz", "12%", "-transparent", "srgb(9,58,32)", "-format", "%@", "info:"]).catch(() => null);
+          "-colorspace", "gray", "-threshold", "18%", "-negate",
+          "-fuzz", "5%", "-transparent", "black", "-format", "%@", "info:"]).catch(() => null);
         const m = bstrip && /^(\d+)x(\d+)\+(\d+)\+/.exec(bstrip.stdout.trim());
         if (m) {
-          const centre = Number(m[3]) + Number(m[1]) / 2;
-          if (Math.abs(centre - 540) > 6) {
-            throw new Error(`the store badges are centred at x=${centre.toFixed(0)}, not 540 — they are ` +
-              `${Math.abs(centre - 540).toFixed(0)}px off-centre on a 1080px slide`);
+          const [bw, bh, bx] = [Number(m[1]), Number(m[2]), Number(m[3])];
+          const badgeShaped = Math.abs(bw - BADGES_W) <= 60 && bh <= 110;
+          if (badgeShaped) {
+            const centre = bx + bw / 2;
+            if (Math.abs(centre - 540) > 6) {
+              throw new Error(`the store badges are centred at x=${centre.toFixed(0)}, not 540 — they are ` +
+                `${Math.abs(centre - 540).toFixed(0)}px off-centre on a 1080px slide`);
+            }
+          } else {
+            console.log(`${name}: badge-centring check skipped — other art shares the footer strip ` +
+              `(dark mass ${bw}x${bh}, expected ~${BADGES_W}x67)`);
           }
         }
         // D3 — no corner logo on closing

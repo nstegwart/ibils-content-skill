@@ -35,8 +35,17 @@ if (!PLAN_PATH || !process.argv[3]) {
   process.exit(1);
 }
 const OUT_DIR = path.resolve(process.argv[3]);
-const IMAGE_MODEL = process.env.CAROUSEL_IMAGE_MODEL || "gpt-5.3-codex-spark";
-const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "medium";
+// NEVER gpt-5.3-codex-spark FOR CAROUSELS (owner, 2026-07-22). Its quota exhausts long before the
+// account's does — an entire burst reported "codex usage limit" and produced zero slides while 41% of
+// the account budget was still sitting unused, because the limit that had been hit belonged to that
+// one model, not to the account. It also cost hours of misdiagnosis: the exhaustion was read as
+// "production is blocked" when the correct reading was "switch models".
+const IMAGE_MODEL = process.env.CAROUSEL_IMAGE_MODEL || "gpt-5.5";
+if (/5\.3|spark/i.test(IMAGE_MODEL)) {
+  console.error(`CAROUSEL_IMAGE_MODEL="${IMAGE_MODEL}" is banned for carousels (owner 2026-07-22). Use gpt-5.5.`);
+  process.exit(1);
+}
+const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "low";
 
 // ---- fixed prompt blocks (operative copy — see references/styles.md) ------
 
