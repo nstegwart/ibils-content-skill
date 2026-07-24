@@ -59,15 +59,20 @@ const HARD_RULE = [
   // A cover once shipped with its headline set in DARK TEAL on the dark green ground: the words were
   // present, correctly placed, and effectively invisible. Gating that costs a whole re-roll — a
   // rendered slide is only cheap to reject BEFORE it is drawn, so say it here as well.
-  "LEGIBILITY BEATS EVERYTHING. Headline and body text must be CREAM (#FBF6E9)",
-  "or a strong amber accent (#F2A93B) on the dark ground. NEVER set type in a",
-  "colour close to the background — no dark green, teal, olive, or muted tone",
-  "on the dark green ground. If a word is meant to recede, make it cream at",
-  "lower weight; never make it darker than the background.",
-  // and the other way a slide becomes unreadable: type printed over its own illustration
-  "TEXT AND ARTWORK MAY NEVER OVERLAP. Illustrations, charts, icons and halftone",
-  "dots go in their own clear area. No paragraph, headline or caption may sit on",
-  "top of a drawing, and no drawing may be placed behind text as a texture.",
+  // NARROW ON PURPOSE. The first version of this rule said "legibility beats everything" and
+  // "text and artwork may never overlap" — and the model played safe on EVERY axis at once: it
+  // dropped the condensed display face for a neutral sans, flattened the textured ground, and
+  // shrank the illustrations to the margin. The deck stopped looking like the deck. A rule that
+  // fixes a colour problem must talk about COLOUR ONLY.
+  "TYPE COLOUR: headline and body are CREAM (#FBF6E9), with amber (#F2A93B) for",
+  "accented words. Never set type in a tone close to the background — no dark",
+  "green, teal or olive lettering on the dark green ground. To make a word",
+  "recede, keep it cream and reduce its weight; never make it darker than the",
+  "ground. This constrains COLOUR ONLY: keep the bold condensed display face,",
+  "the full-bleed textured background, and large confident illustrations exactly",
+  "as the style section describes.",
+  "Text must not be printed ON TOP of an illustration — but artwork may still be",
+  "large and sit right beside the type, as it always has.",
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
   "word 'Ibils' as a wordmark ANYWHERE. Draw NO handle, footer label, slide",
   "number, pagination or page-count text. Do not draw a placeholder for them.",
@@ -93,8 +98,17 @@ const HARD_RULE = [
   "background: no body paragraph, no footnote, no caption, no decoration, no",
   "horizontal rule. The handle and page number are composited there later.",
   "",
-  "BACKGROUND RULE — MUST be single full-bleed color or continuous texture edge-to-edge. FORBIDDEN:",
-  "panel, card, block, frame, border, area, or any region with different color. No visual reservation or special region. The background colour/texture must continue seamlessly to all four canvas edges."
+  // "single full-bleed COLOR **or** continuous texture" handed the model an easy way out, and
+  // surrounded by "FORBIDDEN: any region with different color" it took it: the ground came back
+  // dead flat. Measured against the decks this style is supposed to match — grain stddev 95.3 and
+  // 37.1 on the old ones, 0.4 on the new. The ban is on PANELS, which are bounded shapes; it was
+  // never meant to ban TEXTURE, which is unbounded and carries the whole printed feel.
+  "BACKGROUND RULE — the ground MUST carry visible printed texture: film grain, paper tooth,",
+  "risograph noise, a soft vignette. It is a printed surface, not a flat fill. That texture runs",
+  "full-bleed, edge to edge, unbroken across all four canvas edges.",
+  "FORBIDDEN is any BOUNDED region — panel, card, block, frame, border, plate, or a patch of",
+  "different colour with an edge you could trace. Texture has no edges, so it is not one of these;",
+  "vary it freely. Never leave the ground as an untextured flat fill."
 ].join("\n");
 
 const REFERENCE = [
