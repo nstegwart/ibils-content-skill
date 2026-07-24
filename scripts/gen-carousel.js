@@ -41,7 +41,11 @@ const OUT_DIR = path.resolve(process.argv[3]);
 // the account budget was still sitting unused, because the limit that had been hit belonged to that
 // one model, not to the account. It also cost hours of misdiagnosis: the exhaustion was read as
 // "production is blocked" when the correct reading was "switch models".
-const IMAGE_MODEL = process.env.CAROUSEL_IMAGE_MODEL || "gpt-5.5";
+// The local 9router proxy namespaces its models with a `cx/` prefix. A bare "gpt-5.5" does not
+// match any of them, so the request falls through to a provider called "openai" that holds no
+// credentials, and every call dies with "404 No active credentials for provider: openai" — which
+// reads exactly like an exhausted account until you list the proxy's models and see the prefix.
+const IMAGE_MODEL = process.env.CAROUSEL_IMAGE_MODEL || "cx/gpt-5.5";
 if (/5\.3|spark/i.test(IMAGE_MODEL)) {
   console.error(`CAROUSEL_IMAGE_MODEL="${IMAGE_MODEL}" is banned for carousels (owner 2026-07-22). Use gpt-5.5.`);
   process.exit(1);
@@ -52,6 +56,18 @@ const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "l
 
 const HARD_RULE = [
   "!!! ABSOLUTE RULE — READ FIRST !!!",
+  // A cover once shipped with its headline set in DARK TEAL on the dark green ground: the words were
+  // present, correctly placed, and effectively invisible. Gating that costs a whole re-roll — a
+  // rendered slide is only cheap to reject BEFORE it is drawn, so say it here as well.
+  "LEGIBILITY BEATS EVERYTHING. Headline and body text must be CREAM (#FBF6E9)",
+  "or a strong amber accent (#F2A93B) on the dark ground. NEVER set type in a",
+  "colour close to the background — no dark green, teal, olive, or muted tone",
+  "on the dark green ground. If a word is meant to recede, make it cream at",
+  "lower weight; never make it darker than the background.",
+  // and the other way a slide becomes unreadable: type printed over its own illustration
+  "TEXT AND ARTWORK MAY NEVER OVERLAP. Illustrations, charts, icons and halftone",
+  "dots go in their own clear area. No paragraph, headline or caption may sit on",
+  "top of a drawing, and no drawing may be placed behind text as a texture.",
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
   "word 'Ibils' as a wordmark ANYWHERE. Draw NO handle, footer label, slide",
   "number, pagination or page-count text. Do not draw a placeholder for them.",

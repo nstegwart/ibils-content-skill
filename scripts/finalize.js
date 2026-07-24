@@ -380,6 +380,24 @@ async function finalizeOne(file, { slideLabel = "", isClosing = false, kickerTex
     ]);
   }
 
+  // THE HEADLINE MUST BE READABLE AGAINST ITS OWN GROUND.
+  //
+  // A cover shipped with its headline set in DARK TEAL on the dark green ground — the words were
+  // physically there, correctly placed, and effectively invisible. Every gate passed it, because
+  // every gate was asking "is something in the wrong place" and none was asking "can this be read".
+  //
+  // Cream type puts a lot of near-white pixels in the headline band; dark-on-dark type puts none.
+  // Measured on one deck: the unreadable cover scored 0.00% bright pixels, its readable siblings
+  // 14-23%, and two other decks 35-39%. That is not a threshold, it is a chasm.
+  if (!isClosing) {
+    const litPct = parseFloat((await convert([file, "-crop", "820x330+72+180", "+repage",
+      "-colorspace", "gray", "-threshold", "70%", "-format", "%[fx:mean*100]", "info:"])).stdout);
+    if (Number.isFinite(litPct) && litPct < 4) {
+      throw new Error(`headline is unreadable: only ${litPct.toFixed(2)}% of the headline band is ` +
+        `bright (readable slides measure 14-39%) — the type was set dark-on-dark. Re-roll this slide.`);
+    }
+  }
+
   // D1 — kicker stamped at FIXED geometry on every slide (incl. closing). Same font path
   // family as the footer so a deck never mixes model-drawn amber with cream labels.
   if (kickerText) {

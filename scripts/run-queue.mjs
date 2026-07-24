@@ -65,7 +65,7 @@ function routerKey() {
     return m ? m[1] : "";
   } catch { return ""; }
 }
-const ENV = { ...process.env, CAROUSEL_IMAGE_MODEL: "gpt-5.5", CAROUSEL_IMAGE_REASONING_EFFORT: "low",
+const ENV = { ...process.env, CAROUSEL_IMAGE_MODEL: "cx/gpt-5.5", CAROUSEL_IMAGE_REASONING_EFFORT: "low",
               ROUTER9_API_KEY: routerKey() };
 let quotaOut = false;
 
