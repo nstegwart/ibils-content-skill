@@ -68,6 +68,7 @@ function routerKey() {
 const ENV = { ...process.env, CAROUSEL_IMAGE_MODEL: "cx/gpt-5.5", CAROUSEL_IMAGE_REASONING_EFFORT: "low",
               ROUTER9_API_KEY: routerKey() };
 let quotaOut = false;
+let limitHits = 0;
 
 function run(script, a, ms) {
   const r = spawnSync(process.execPath, [path.join(HERE, script), ...a], { encoding: "utf8", env: ENV, timeout: ms });
@@ -85,7 +86,24 @@ function buildDeck(k) {
       quotaOut = true;
       return { ok: false, why: "codex tak bisa dihubungi (kredensial/proxy), BUKAN kuota" };
     }
-    if (/usage limit|rate.?limit|quota|429|Payment Required|out of credits/i.test(g)) { quotaOut = true; return { ok: false, why: "kuota codex habis" }; }
+    // A RATE LIMIT IS A PAUSE, NOT AN ENDING.
+    //
+    // The first version halted the entire queue the moment it saw a limit signal. It then stopped a
+    // 6800-deck run after ONE deck and announced "kuota codex habis" — while codex was, in fact,
+    // fine: the very next call succeeded. A transient 429 is the provider asking us to slow down,
+    // and treating it as terminal turns an overnight run into a five-minute one.
+    //
+    // So back off and try again. Only conclude the quota is genuinely gone after the limit survives
+    // three escalating waits — that is the difference between "busy" and "empty".
+    if (/usage limit|rate.?limit|429|Payment Required|out of credits|quota/i.test(g)) {
+      limitHits += 1;
+      if (limitHits >= 3) { quotaOut = true; return { ok: false, why: "kuota codex habis (3x berturut-turut setelah backoff)" }; }
+      const wait = [60, 300, 900][Math.min(limitHits - 1, 2)];
+      console.log(`  ...batas laju kena (${limitHits}/3), tunggu ${wait}s lalu coba lagi`);
+      spawnSync(process.execPath, ["-e", `setTimeout(()=>{}, ${wait * 1000})`]);
+      continue;                        // ulangi ronde ini, jangan buang deck-nya
+    }
+    limitHits = 0;                     // sukses menghubungi model -> reset penghitung
     if (/failed the copy linter/i.test(g)) return { ok: false, why: "copy linter menolak plan" };
     const f = run("finalize.js", [slidesDir(k)], 10 * 60 * 1000);
     const bad = [...f.matchAll(/^(\S+)\.png: FAILED/gm)].map((m) => m[1]);
