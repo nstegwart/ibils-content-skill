@@ -166,6 +166,14 @@ async function worker() {
 }
 await Promise.all(Array.from({ length: CONC }, worker));
 
+// REINDEX SEKALI LAGI SAAT BERHENTI, APA PUN SEBABNYA.
+//
+// Reindex per-deck hanya jalan untuk deck yang MENCAPAI 8/8. Run pertama berhenti kehabisan kuota
+// di tengah dan meninggalkan tiga deck parsial (7/8, 5/8, 1/8) yang ada di disk tapi tidak terlihat
+// sama sekali di papan — persis kondisi "kerjaan hilang" yang mau dihindari. Yang parsial pun harus
+// muncul, ditandai draft-render, supaya jelas mana yang tinggal kurang sedikit.
+try { await fetch("http://localhost:8787/api/carousels/reindex", { method: "POST" }).catch(() => {}); } catch {}
+
 const mins = (Date.now() - started) / 60000;
 console.log(`\nSELESAI ${new Date().toISOString()}`);
 console.log(`  jadi  : ${ok}\n  gagal : ${fail}\n  waktu : ${mins.toFixed(0)} menit`);
