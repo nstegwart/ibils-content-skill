@@ -99,32 +99,20 @@ setInterval(() => {
   }
 }, 15_000).unref();
 
+// RESTORED VERBATIM from 6ce0b1c — the version that actually produced the decks the owner points
+// at as correct (item-15794, 22 July 18:08).
+//
+// I had grown this block from 20 lines to 40 over one session, adding a defensive rule for every
+// defect I found and deleting nothing. The style section never changed; it was simply competing
+// with twice as many hard constraints, so the model spent its attention satisfying my prohibitions
+// instead of making a good picture. The illustrations went weak, the ground went flat, the type
+// shrank. Owner: "kenapa jauh banget, cek sesi sebelumnya kenapa bisa bikin proper."
+//
+// A defect caught by a gate in finalize.js does NOT need a matching sentence here. The gate already
+// stops it, and each extra sentence costs attention on every slide forever. If something must be
+// added, something must come out.
 const HARD_RULE = [
   "!!! ABSOLUTE RULE — READ FIRST !!!",
-  // A cover once shipped with its headline set in DARK TEAL on the dark green ground: the words were
-  // present, correctly placed, and effectively invisible. Gating that costs a whole re-roll — a
-  // rendered slide is only cheap to reject BEFORE it is drawn, so say it here as well.
-  // NARROW ON PURPOSE. The first version of this rule said "legibility beats everything" and
-  // "text and artwork may never overlap" — and the model played safe on EVERY axis at once: it
-  // dropped the condensed display face for a neutral sans, flattened the textured ground, and
-  // shrank the illustrations to the margin. The deck stopped looking like the deck. A rule that
-  // fixes a colour problem must talk about COLOUR ONLY.
-  // MEASURED against the decks this style is meant to match: their headline band runs 28.8%-39.6%
-  // ink. A fresh render came back at 15.7% — the type was half the size it should be, which is what
-  // "masih jauh" looks like as a number. Typography-first means the sentence OWNS the frame.
-  "TYPE SCALE — the headline is the subject of the slide, not a label on it. Set it",
-  "LARGE enough to fill its band edge to edge: the longest line should very nearly",
-  "reach the right margin, and the headline block should carry roughly a third of",
-  "the canvas in ink. Negative space is the calm AROUND a big statement, never a",
-  "small statement floating in a big empty frame.",
-  "TYPE COLOUR: headline and body are CREAM (#FBF6E9), with amber (#F2A93B) for",
-  "accented words. Never set type in a tone close to the background — no dark",
-  "green, teal or olive lettering on the dark green ground. To make a word",
-  "recede, keep it cream and reduce its weight; never make it darker than the",
-  "ground. This constrains COLOUR ONLY: keep the bold condensed display face and",
-  "the large confident illustrations exactly as the style section describes.",
-  "Text must not be printed ON TOP of an illustration — but artwork may still be",
-  "large and sit right beside the type, as it always has.",
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
   "word 'Ibils' as a wordmark ANYWHERE. Draw NO handle, footer label, slide",
   "number, pagination or page-count text. Do not draw a placeholder for them.",
@@ -148,22 +136,7 @@ const HARD_RULE = [
   // handle was overpainted. Explicitly empty the strip finalize uses.
   "FOOTER LANDING — the full-width strip y=1220..1349 must be EMPTY continuous",
   "background: no body paragraph, no footnote, no caption, no decoration, no",
-  "horizontal rule. The handle and page number are composited there later.",
-  "",
-  // THE SPEC IS references/styles.md, NOT MY OPINION OF IT.
-  //
-  // I had rewritten this to DEMAND texture — "film grain, paper tooth, risograph noise" — after
-  // eyeballing older decks and concluding the new ones looked flat. But STYLE_GLOBAL_GREEN, which
-  // is what every one of these decks actually uses, says the opposite in the owner's own words:
-  // solid deep green, "flat, disciplined, high contrast", typography-first. I wrote a rule that
-  // contradicted the project's own style spec, confidently, because I never opened the file.
-  // (The grain numbers I quoted were also wrong: the fixed sample point landed on the artwork.)
-  "BACKGROUND RULE — one deep Ibils green #0E3B33 ground, full-bleed to all four canvas edges.",
-  "It is PRINTED, not filled: carry a fine film grain across the whole frame and a soft vignette",
-  "that deepens the corners. Subtle, never busy — you should feel it before you notice it.",
-  "FORBIDDEN is any BOUNDED region: panel, card, block, frame, border, plate, or a patch of",
-  "different colour with an edge you could trace. Grain and vignette have no edges, so they are",
-  "not that. Never leave the ground as a dead flat fill."
+  "horizontal rule. The handle and page number are composited there later."
 ].join("\n");
 
 const REFERENCE = [
