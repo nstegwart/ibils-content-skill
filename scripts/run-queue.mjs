@@ -75,7 +75,14 @@ function run(script, a, ms) {
   return `${r.stdout || ""}${r.stderr || ""}`;
 }
 function buildDeck(k) {
-  for (let round = 1; round <= 4; round++) {
+  // TWO ROUNDS: one render, one re-roll for whatever the gates reject. Not four.
+  //
+  // A round is a fresh billed session per rejected slide. Four rounds on a stubborn deck is four
+  // times the cost for a deck that may simply be unrenderable, and the median after the prompt
+  // fixes is one. Past the second round this is no longer converging — report it and let the agent
+  // that spawned this decide whether the deck is worth more money.
+  const ROUNDS = Number(process.env.CAROUSEL_ROUNDS || 2);
+  for (let round = 1; round <= ROUNDS; round++) {
     const g = run("gen-carousel.js", [path.join(ROOT, k, "plan.json"), slidesDir(k)], 15 * 60 * 1000);
     // DISTINGUISH "OUT OF QUOTA" FROM "CANNOT REACH THE MODEL AT ALL".
     // The first version lumped them together and reported "kuota codex habis" when the real fault
@@ -110,7 +117,7 @@ function buildDeck(k) {
     if (bad.length === 0 && done(k)) return { ok: true, rounds: round };
     for (const b of bad) fs.rmSync(path.join(slidesDir(k), `${b}.png`), { force: true });
   }
-  return { ok: false, why: "4 ronde masih gagal" };
+  return { ok: false, why: `${ROUNDS} ronde masih gagal — agent yang memutuskan mau ulang atau tidak` };
 }
 
 const queue = fs.readFileSync(QUEUE, "utf8").split("\n").map((s) => s.trim()).filter(Boolean);

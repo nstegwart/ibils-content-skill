@@ -56,6 +56,19 @@ const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "l
 
 // Every codex child we spawn, so we can take them with us. A billed API session that outlives the
 // process that asked for it is money burning with nobody reading the output.
+// Shared stop-flag. Once codex has refused the same way several times the run is over — see the
+// abort check in the retry loop.
+const ABORT = { hit: false, fails: 0, why: "" };
+
+// HARD CEILING ON BILLED SESSIONS PER INVOCATION.
+//
+// Not a retry policy — a fuse. Whatever bug appears next, this run cannot cost more than this many
+// codex calls, because the previous version could reach 24 and did. A deck is 7 generated slides
+// (the closing is rendered locally), so 8 leaves one spare and no room for a loop.
+const MAX_SESSIONS = Number(process.env.CAROUSEL_MAX_SESSIONS || 8);
+let sessionsUsed = 0;
+
+
 const LIVE = new Set();
 const reapAll = () => {
   for (const c of LIVE) {
@@ -69,6 +82,22 @@ for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) {
   process.on(sig, () => { reapAll(); process.exit(1); });
 }
 process.on("uncaughtException", (e) => { reapAll(); console.error(e); process.exit(1); });
+
+// DIE WHEN NOBODY IS WATCHING.
+//
+// A backgrounded node process does not necessarily get SIGHUP when the shell that launched it goes
+// away, so it can keep grinding through the retry loop — spawning fresh billed codex sessions every
+// few minutes — with its parent long gone. That is exactly how gpt-5.5 sessions were found still
+// running in the dashboard with nobody reading a byte of their output. If our parent has been
+// reparented to init, there is no one left to receive this work.
+const ORIGINAL_PPID = process.ppid;
+setInterval(() => {
+  if (process.ppid !== ORIGINAL_PPID || process.ppid === 1) {
+    console.error("induk sudah tidak ada — berhenti dan membunuh semua sesi codex");
+    reapAll();
+    process.exit(1);
+  }
+}, 15_000).unref();
 
 const HARD_RULE = [
   "!!! ABSOLUTE RULE — READ FIRST !!!",
@@ -129,9 +158,12 @@ const HARD_RULE = [
   // solid deep green, "flat, disciplined, high contrast", typography-first. I wrote a rule that
   // contradicted the project's own style spec, confidently, because I never opened the file.
   // (The grain numbers I quoted were also wrong: the fixed sample point landed on the artwork.)
-  "BACKGROUND RULE — solid deep Ibils green #0E3B33, full-bleed to all four canvas edges.",
+  "BACKGROUND RULE — one deep Ibils green #0E3B33 ground, full-bleed to all four canvas edges.",
+  "It is PRINTED, not filled: carry a fine film grain across the whole frame and a soft vignette",
+  "that deepens the corners. Subtle, never busy — you should feel it before you notice it.",
   "FORBIDDEN is any BOUNDED region: panel, card, block, frame, border, plate, or a patch of",
-  "different colour with an edge you could trace. No visual reservation, no special region."
+  "different colour with an edge you could trace. Grain and vignette have no edges, so they are",
+  "not that. Never leave the ground as a dead flat fill."
 ].join("\n");
 
 const REFERENCE = [
@@ -559,25 +591,42 @@ async function main() {
     } catch {
       /* generate */
     }
-    // Retry with BACKOFF. Under the old account pool a failure meant "rotate to another account",
-    // which was an instant, real remedy. There is one account now, so the dominant failure is a
-    // usage limit — and hammering the same account three times in three seconds is not a remedy,
-    // it just burns the attempts. Wait, and wait longer if codex actually said "limit".
-    const BACKOFF = [30_000, 120_000, 300_000];
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const r = await runCodex(slide, plan, total);
-      if (r.ok) {
-        console.log(`${slide.name}: ok`);
-        return true;
-      }
-      console.log(`${slide.name}: attempt ${attempt} failed — ${r.why}`);
-      if (attempt < 3) {
-        const wait = r.limited ? BACKOFF[attempt] : 8_000;
-        console.log(`${slide.name}: waiting ${Math.round(wait / 1000)}s before retry`);
-        await new Promise((r2) => setTimeout(r2, wait));
-      }
+    // ONE ATTEMPT PER SLIDE. NO RETRY, NO BACKOFF (owner, 2026-07-25).
+    //
+    // This used to try each slide three times with 30s/2m/5m waits. Eight slides therefore cost up
+    // to TWENTY-FOUR billed codex sessions from a single command, spread over a quarter of an hour
+    // — and when the cause was a rate limit or a dead credential, all twenty-four failed
+    // identically. The script kept paying, minutes apart, for the same answer. That is where $20
+    // went.
+    //
+    // Retrying is not this script's decision to make. It cannot see the quota, the account state,
+    // or whether the owner still wants the work. THE AGENT THAT SPAWNED US DECIDES: we do the one
+    // thing we were asked to do, report exactly what happened, and stop. A failure is a failure.
+    if (ABORT.hit) {
+      console.log(`${slide.name}: dilewati — ${ABORT.why}`);
+      return false;
     }
-    console.log(`${slide.name}: FAILED`);
+    if (sessionsUsed >= MAX_SESSIONS) {
+      ABORT.hit = true;
+      ABORT.why = `batas ${MAX_SESSIONS} sesi codex tercapai`;
+      console.log(`${slide.name}: dilewati — ${ABORT.why}`);
+      return false;
+    }
+    sessionsUsed += 1;
+    const r = await runCodex(slide, plan, total);
+    if (r.ok) {
+      console.log(`${slide.name}: ok`);
+      return true;
+    }
+    // A refusal that will hit every other slide identically stops the whole run at once, so a
+    // dead credential costs one session instead of eight.
+    if (r.limited || /No active credentials|Missing environment variable|ECONNREFUSED|Payment Required/i.test(r.why || "")) {
+      ABORT.hit = true;
+      ABORT.why = r.why || "codex menolak";
+      console.log(`ABORT — ${ABORT.why}. Sisa slide tidak dicoba (hemat kuota).`);
+      reapAll();
+    }
+    console.log(`${slide.name}: FAILED — ${r.why}`);
     return false;
   }
 
