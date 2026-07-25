@@ -390,9 +390,24 @@ async function finalizeOne(file, { slideLabel = "", isClosing = false, kickerTex
   // Measured on one deck: the unreadable cover scored 0.00% bright pixels, its readable siblings
   // 14-23%, and two other decks 35-39%. That is not a threshold, it is a chasm.
   if (!isClosing) {
+    // ONLY JUDGE A BAND THAT ACTUALLY HAS A HEADLINE IN IT.
+    //
+    // The first version measured brightness alone and fired on the synthetic test plates — flat
+    // colour with no type drawn on them at all, which of course score 0% bright. It turned the
+    // selftest red. Same trap as the mascot-crop gate: a test that judges an empty field.
+    //
+    // Dark-on-dark type is still TYPE — it has glyph edges, it just has no brightness. A blank
+    // plate has neither. So look for edges first: no edges means nothing was drawn here and there
+    // is nothing to rule on.
+    const edges = parseFloat((await convert([file, "-crop", "820x330+72+180", "+repage",
+      // 3%, calibrated on three plates: a blank ground scores 0.00, dark-on-dark type 3.13, cream
+      // type 5.84. At 20% — the first guess — even genuinely unreadable type scored 0.00 and the
+      // gate would have waved it through, which is the failure it exists to catch.
+      "-colorspace", "gray", "-morphology", "EdgeIn", "Octagon:1", "-threshold", "3%",
+      "-format", "%[fx:mean*100]", "info:"])).stdout);
     const litPct = parseFloat((await convert([file, "-crop", "820x330+72+180", "+repage",
       "-colorspace", "gray", "-threshold", "70%", "-format", "%[fx:mean*100]", "info:"])).stdout);
-    if (Number.isFinite(litPct) && litPct < 4) {
+    if (Number.isFinite(litPct) && Number.isFinite(edges) && edges > 0.5 && litPct < 4) {
       throw new Error(`headline is unreadable: only ${litPct.toFixed(2)}% of the headline band is ` +
         `bright (readable slides measure 14-39%) — the type was set dark-on-dark. Re-roll this slide.`);
     }

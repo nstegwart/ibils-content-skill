@@ -64,13 +64,20 @@ const HARD_RULE = [
   // dropped the condensed display face for a neutral sans, flattened the textured ground, and
   // shrank the illustrations to the margin. The deck stopped looking like the deck. A rule that
   // fixes a colour problem must talk about COLOUR ONLY.
+  // MEASURED against the decks this style is meant to match: their headline band runs 28.8%-39.6%
+  // ink. A fresh render came back at 15.7% — the type was half the size it should be, which is what
+  // "masih jauh" looks like as a number. Typography-first means the sentence OWNS the frame.
+  "TYPE SCALE — the headline is the subject of the slide, not a label on it. Set it",
+  "LARGE enough to fill its band edge to edge: the longest line should very nearly",
+  "reach the right margin, and the headline block should carry roughly a third of",
+  "the canvas in ink. Negative space is the calm AROUND a big statement, never a",
+  "small statement floating in a big empty frame.",
   "TYPE COLOUR: headline and body are CREAM (#FBF6E9), with amber (#F2A93B) for",
   "accented words. Never set type in a tone close to the background — no dark",
   "green, teal or olive lettering on the dark green ground. To make a word",
   "recede, keep it cream and reduce its weight; never make it darker than the",
-  "ground. This constrains COLOUR ONLY: keep the bold condensed display face,",
-  "the full-bleed textured background, and large confident illustrations exactly",
-  "as the style section describes.",
+  "ground. This constrains COLOUR ONLY: keep the bold condensed display face and",
+  "the large confident illustrations exactly as the style section describes.",
   "Text must not be printed ON TOP of an illustration — but artwork may still be",
   "large and sit right beside the type, as it always has.",
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
@@ -98,17 +105,17 @@ const HARD_RULE = [
   "background: no body paragraph, no footnote, no caption, no decoration, no",
   "horizontal rule. The handle and page number are composited there later.",
   "",
-  // "single full-bleed COLOR **or** continuous texture" handed the model an easy way out, and
-  // surrounded by "FORBIDDEN: any region with different color" it took it: the ground came back
-  // dead flat. Measured against the decks this style is supposed to match — grain stddev 95.3 and
-  // 37.1 on the old ones, 0.4 on the new. The ban is on PANELS, which are bounded shapes; it was
-  // never meant to ban TEXTURE, which is unbounded and carries the whole printed feel.
-  "BACKGROUND RULE — the ground MUST carry visible printed texture: film grain, paper tooth,",
-  "risograph noise, a soft vignette. It is a printed surface, not a flat fill. That texture runs",
-  "full-bleed, edge to edge, unbroken across all four canvas edges.",
-  "FORBIDDEN is any BOUNDED region — panel, card, block, frame, border, plate, or a patch of",
-  "different colour with an edge you could trace. Texture has no edges, so it is not one of these;",
-  "vary it freely. Never leave the ground as an untextured flat fill."
+  // THE SPEC IS references/styles.md, NOT MY OPINION OF IT.
+  //
+  // I had rewritten this to DEMAND texture — "film grain, paper tooth, risograph noise" — after
+  // eyeballing older decks and concluding the new ones looked flat. But STYLE_GLOBAL_GREEN, which
+  // is what every one of these decks actually uses, says the opposite in the owner's own words:
+  // solid deep green, "flat, disciplined, high contrast", typography-first. I wrote a rule that
+  // contradicted the project's own style spec, confidently, because I never opened the file.
+  // (The grain numbers I quoted were also wrong: the fixed sample point landed on the artwork.)
+  "BACKGROUND RULE — solid deep Ibils green #0E3B33, full-bleed to all four canvas edges.",
+  "FORBIDDEN is any BOUNDED region: panel, card, block, frame, border, plate, or a patch of",
+  "different colour with an edge you could trace. No visual reservation, no special region."
 ].join("\n");
 
 const REFERENCE = [
