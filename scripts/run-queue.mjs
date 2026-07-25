@@ -65,7 +65,7 @@ function routerKey() {
     return m ? m[1] : "";
   } catch { return ""; }
 }
-const ENV = { ...process.env, CAROUSEL_IMAGE_MODEL: "cx/gpt-5.5", CAROUSEL_IMAGE_REASONING_EFFORT: "low",
+const ENV = { ...process.env, CAROUSEL_IMAGE_MODEL: "gpt-5.5", CAROUSEL_IMAGE_REASONING_EFFORT: "low",
               ROUTER9_API_KEY: routerKey() };
 let quotaOut = false;
 let limitHits = 0;
@@ -135,7 +135,22 @@ async function worker() {
     if (done(k)) continue;
     fs.rmSync(slidesDir(k), { recursive: true, force: true });   // mulai dari keadaan yang diketahui
     const r = buildDeck(k);
-    if (r.ok) { ok++; console.log(`  OK    ${k}  ronde${r.rounds}   [${ok} jadi / ${fail} gagal]`); }
+    if (r.ok) {
+      ok++;
+      console.log(`  OK    ${k}  ronde${r.rounds}   [${ok} jadi / ${fail} gagal]`);
+      // REINDEX SETIAP DECK, BUKAN DI AKHIR.
+      //
+      // Slide-nya memang sudah tersimpan di disk begitu dirender — tapi papan di :5177 membaca
+      // tabel `carousels`, dan tabel itu hanya berubah kalau reindex dipanggil. Kalau reindex cuma
+      // di akhir, sebuah run yang berhenti di tengah (kuota habis, mesin mati, proses dibunuh)
+      // meninggalkan puluhan deck yang ADA di disk tapi TIDAK TERLIHAT sama sekali — dan itu
+      // terbaca seperti pekerjaan yang hilang. Sekali per deck, murah, dan hasil parsial selalu
+      // bisa dicek.
+      try {
+        await fetch("http://localhost:8787/api/carousels/reindex", { method: "POST" })
+          .catch(() => {});
+      } catch { /* papan sedang mati — slide tetap aman di disk */ }
+    }
     else {
       fail++;
       console.log(`  GAGAL ${k}  ${r.why}   [${ok} jadi / ${fail} gagal]`);
