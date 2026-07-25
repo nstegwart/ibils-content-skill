@@ -40,9 +40,11 @@ const OUT_DIR = path.resolve(process.argv[3]);
 // the account budget was still sitting unused, because the limit that had been hit belonged to that
 // one model, not to the account. It also cost hours of misdiagnosis: the exhaustion was read as
 // "production is blocked" when the correct reading was "switch models".
-// 9router menamai model dengan awalan `cx/`. Tanpa itu, permintaan jatuh ke provider "openai"
-// yang tak punya kredensial dan errornya terbaca persis seperti kuota habis.
-const IMAGE_MODEL = process.env.CAROUSEL_IMAGE_MODEL || "cx/gpt-5.5";
+// gpt-5.5 polos (owner 2026-07-25, sudah balik pakai codex langsung — bukan lewat proxy 9router).
+// Catatan kalau suatu saat rutenya lewat 9router lagi: proxy itu menamai model dengan awalan `cx/`,
+// dan tanpa awalan itu permintaan jatuh ke provider "openai" yang tak punya kredensial — errornya
+// terbaca persis seperti kuota habis padahal bukan.
+const IMAGE_MODEL = process.env.CAROUSEL_IMAGE_MODEL || "gpt-5.5";
 if (/5\.3|spark/i.test(IMAGE_MODEL)) {
   console.error(`CAROUSEL_IMAGE_MODEL="${IMAGE_MODEL}" is banned for carousels (owner 2026-07-22). Use gpt-5.5.`);
   process.exit(1);
