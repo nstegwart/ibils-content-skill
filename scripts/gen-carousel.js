@@ -12,7 +12,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-const HERE_DIR = path.dirname(fileURLToPath(import.meta.url));
 import { spawn, spawnSync } from "node:child_process";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -41,10 +40,8 @@ const OUT_DIR = path.resolve(process.argv[3]);
 // the account budget was still sitting unused, because the limit that had been hit belonged to that
 // one model, not to the account. It also cost hours of misdiagnosis: the exhaustion was read as
 // "production is blocked" when the correct reading was "switch models".
-// The local 9router proxy namespaces its models with a `cx/` prefix. A bare "gpt-5.5" does not
-// match any of them, so the request falls through to a provider called "openai" that holds no
-// credentials, and every call dies with "404 No active credentials for provider: openai" — which
-// reads exactly like an exhausted account until you list the proxy's models and see the prefix.
+// 9router menamai model dengan awalan `cx/`. Tanpa itu, permintaan jatuh ke provider "openai"
+// yang tak punya kredensial dan errornya terbaca persis seperti kuota habis.
 const IMAGE_MODEL = process.env.CAROUSEL_IMAGE_MODEL || "cx/gpt-5.5";
 if (/5\.3|spark/i.test(IMAGE_MODEL)) {
   console.error(`CAROUSEL_IMAGE_MODEL="${IMAGE_MODEL}" is banned for carousels (owner 2026-07-22). Use gpt-5.5.`);
@@ -54,63 +51,33 @@ const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "l
 
 // ---- fixed prompt blocks (operative copy — see references/styles.md) ------
 
-// Every codex child we spawn, so we can take them with us. A billed API session that outlives the
-// process that asked for it is money burning with nobody reading the output.
-// Shared stop-flag. Once codex has refused the same way several times the run is over — see the
-// abort check in the retry loop.
-const ABORT = { hit: false, fails: 0, why: "" };
-
-// HARD CEILING ON BILLED SESSIONS PER INVOCATION.
-//
-// Not a retry policy — a fuse. Whatever bug appears next, this run cannot cost more than this many
-// codex calls, because the previous version could reach 24 and did. A deck is 7 generated slides
-// (the closing is rendered locally), so 8 leaves one spare and no room for a loop.
+// ---- pengaman biaya (owner 2026-07-25: "$20 abis gara gara script lo") ----
+// SATU percobaan per slide. Retry adalah keputusan agent yang memanggil, bukan skrip ini.
+// Versi lama: 3 percobaan x 8 slide = sampai 24 sesi berbayar dari satu perintah.
+const ABORT = { hit: false, why: "" };
 const MAX_SESSIONS = Number(process.env.CAROUSEL_MAX_SESSIONS || 8);
 let sessionsUsed = 0;
 
-
+// Anak codex dilacak agar tidak ada yang hidup lebih lama dari kita. `codex` bukan satu proses —
+// dia punya helper — jadi dibunuh per GRUP (pid negatif), bukan per proses.
 const LIVE = new Set();
 const reapAll = () => {
   for (const c of LIVE) {
-    // negative pid = the whole process group, which is what actually stops codex and its helpers
     try { process.kill(-c.pid, "SIGKILL"); } catch { try { c.kill("SIGKILL"); } catch {} }
   }
   LIVE.clear();
 };
 process.on("exit", reapAll);
-for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) {
-  process.on(sig, () => { reapAll(); process.exit(1); });
-}
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, () => { reapAll(); process.exit(1); });
 process.on("uncaughtException", (e) => { reapAll(); console.error(e); process.exit(1); });
 
-// DIE WHEN NOBODY IS WATCHING.
-//
-// A backgrounded node process does not necessarily get SIGHUP when the shell that launched it goes
-// away, so it can keep grinding through the retry loop — spawning fresh billed codex sessions every
-// few minutes — with its parent long gone. That is exactly how gpt-5.5 sessions were found still
-// running in the dashboard with nobody reading a byte of their output. If our parent has been
-// reparented to init, there is no one left to receive this work.
+// Node yang di-background tidak selalu menerima SIGHUP saat shell induknya hilang, jadi ia bisa
+// terus memicu sesi berbayar tanpa ada yang membaca hasilnya. Dua sesi pernah hidup 13 jam begini.
 const ORIGINAL_PPID = process.ppid;
 setInterval(() => {
-  if (process.ppid !== ORIGINAL_PPID || process.ppid === 1) {
-    console.error("induk sudah tidak ada — berhenti dan membunuh semua sesi codex");
-    reapAll();
-    process.exit(1);
-  }
+  if (process.ppid !== ORIGINAL_PPID || process.ppid === 1) { reapAll(); process.exit(1); }
 }, 15_000).unref();
 
-// RESTORED VERBATIM from 6ce0b1c — the version that actually produced the decks the owner points
-// at as correct (item-15794, 22 July 18:08).
-//
-// I had grown this block from 20 lines to 40 over one session, adding a defensive rule for every
-// defect I found and deleting nothing. The style section never changed; it was simply competing
-// with twice as many hard constraints, so the model spent its attention satisfying my prohibitions
-// instead of making a good picture. The illustrations went weak, the ground went flat, the type
-// shrank. Owner: "kenapa jauh banget, cek sesi sebelumnya kenapa bisa bikin proper."
-//
-// A defect caught by a gate in finalize.js does NOT need a matching sentence here. The gate already
-// stops it, and each extra sentence costs attention on every slide forever. If something must be
-// added, something must come out.
 const HARD_RULE = [
   "!!! ABSOLUTE RULE — READ FIRST !!!",
   "Do NOT draw a logo, logo mark, brand badge, app-icon badge, or write the",
@@ -192,9 +159,10 @@ const FORMAT = [
   "all four canvas edges. Usable poster width remains x=0..1079 everywhere",
   "except the small logo landing zone x=880..1079,y=0..229. Never turn that",
   "small corner landing zone into a full-height or partial-height side panel.",
-  // D5 — align empty strip with finalize handle/page landing. Strict empty from y=1200 (task: body paragraph MUST end above y=1200).
+  // D5 — align empty strip with finalize handle/page landing (was y=1230; body
+  // still spilled into the SW handle). Strict empty from y=1220.
   "BOTTOM GEOMETRY — keep ALL meaningful content (headline, body, mascot,",
-  "props, icons) entirely above y=1200. From y=1200 through y=1349, continue",
+  "props, icons) entirely above y=1220. From y=1220 through y=1349, continue",
   "the SAME full-width background only — no text, no horizontal boundary,",
   "footer band, strip, box, plate, tab, rectangle or colour change. That",
   "strip is reserved for the later-composited handle and page number.",
@@ -337,7 +305,8 @@ function buildPrompt(slide, plan, total) {
       "Typography + editorial graphic only: bold headline, body copy, simple",
       "icons/shapes/charts that fit the message. Full-bleed background texture",
       "continues normally through every corner, including behind the later logo",
-      "overlay. LOGO AREA RULE — the reserved top-right corner landing zone (x=800..1080, y=0..280 — this is EXACTLY the 280x280 box finalize.js measures; the two must never disagree) must remain continuous background texture only. Textured background is ALLOWED and required (including any penetration through the later logo overlay) to avoid boxes or empty corners. DO NOT draw any meaningful content, text, illustrations, icons, graphics, shapes, ornaments, cards, panels, plates, or colour changes in x>=800, y<=280. The model must never draw any logo there — logos are composited in the background afterwards. This zone must stay plain background only. KICKER BAND ON ALL SLIDES (including content slides) — y=60 to 180, full width must be COMPLETELY EMPTY plain background texture only. No text, no illustration, no icon, no graphic, no ornament, no card, no plate, no colour change. Content headline must start BELOW y=200. The exact kicker label is composited later by finalize.js at y~96 height~34. Leave this band untouched by the model on every slide.",
+      "overlay. Do not reserve, blank, recolour, or frame any logo area; keep",
+      "only meaningful content in the top-right away from x>820,y<230.",
       "",
       style,
       "",
@@ -412,24 +381,25 @@ function buildPrompt(slide, plan, total) {
       "  under it. NOTHING may enter it — not the first line of the headline, not an",
       "  ascender, not an ornament.",
       "",
-      "  HEADLINE (FULL WIDTH, y = 200 to 470) — short CTA, large confident display type,",
-      "  flush left. May stack 1-2 lines. ALL glyphs, including descenders and the",
-      "  tail of the last letter, MUST end BEFORE y=470. If it does not fit, SET",
-      "  THE TYPE SMALLER or break earlier.",
+      "  HEADLINE (LEFT, upper-middle) — short CTA, large confident display type,",
+      "  flush left. Its topmost glyph must START BELOW y=200 (the kicker band is",
+      "  above it). May stack 2–3 lines. Every glyph, including descenders and the",
+      "  tail of the last letter, must END BEFORE x=560. If it does not fit, SET",
+      "  THE TYPE SMALLER or break earlier — never bleed right into the phone column.",
       "",
-      "  HIMEL (LEFT) — owner wants Himel on the closing. Draw him as a",
+      "  HIMEL (LEFT, mid band) — owner wants Himel on the closing. Draw him as a",
       "  COMPLETE figure from crown to BOTH boot soles (no cropped calves/feet).",
-      "  Place him in the LEFT mid band roughly x=40..520, y=490..1120. His feet",
-      "  MUST end ABOVE y=1130 — the store-badge strip lives below that line.",
+      "  Place him in the LEFT mid band roughly x=40..520, y=360..1080. His feet",
+      "  MUST end ABOVE y=1100 — the store-badge strip lives below that line.",
       "  If he does not fit, DRAW HIM SMALLER so the whole body is inside the",
       "  frame. NEVER solve overflow by cutting off his legs, boots, or cape.",
       "  Do NOT put him in the right column or on the badge strip.",
       "",
-      "  RIGHT COLUMN (x = 560 to 1080, y = 480 to 1130) — COMPLETELY EMPTY plain textured background.",
+      "  RIGHT COLUMN (x = 560 to 1080) — COMPLETELY EMPTY plain textured background.",
       "  Not one letter, shape, line, or ornament. A device mockup is composited",
       "  there afterwards; anything you draw there will be covered or collided with.",
       "",
-      "  BADGE STRIP (y = 1150 to 1349, full width) — COMPLETELY EMPTY plain",
+      "  BADGE STRIP (y = 1100 to 1349, full width) — COMPLETELY EMPTY plain",
       "  background only. Store badges are composited there later. This is a",
       "  horizontal band, NOT 'the whole bottom third of the poster for Himel'.",
       "",
@@ -470,20 +440,8 @@ function runCodex(slide, plan, total) {
       cwd: OUT_DIR,
       env: { ...process.env, NO_COLOR: "1" },
       stdio: ["pipe", "pipe", "pipe"],
-      // OWN PROCESS GROUP, so we can kill the whole family in one call.
-      // `codex` is not one process — it spawns helpers of its own. Killing just the pid we hold
-      // left the helpers running: a test that started 3 codex processes still had 2 alive after
-      // the parent was killed. detached:true puts the whole tree in its own group, and a negative
-      // pid signals the group. (We never unref it, so this does NOT background the child.)
-      detached: true,
+      detached: true,   // grup sendiri, supaya bisa dibunuh sekeluarga
     });
-    // EVERY CODEX CHILD IS TRACKED SO NONE CAN OUTLIVE US.
-    //
-    // These are billed API sessions. When this process died — killed, timed out, or its parent
-    // runner reaped — the codex children kept going, and the 9-minute SIGKILL below died with us,
-    // so nothing was left to stop them. The owner found gpt-5.5 sessions still burning tokens in
-    // the 9router dashboard hours later, with nobody reading a single byte of their output. Two of
-    // them had been running for THIRTEEN HOURS.
     LIVE.add(child);
     child.on("close", () => LIVE.delete(child));
 
@@ -564,82 +522,53 @@ async function main() {
     } catch {
       /* generate */
     }
-    // ONE ATTEMPT PER SLIDE. NO RETRY, NO BACKOFF (owner, 2026-07-25).
-    //
-    // This used to try each slide three times with 30s/2m/5m waits. Eight slides therefore cost up
-    // to TWENTY-FOUR billed codex sessions from a single command, spread over a quarter of an hour
-    // — and when the cause was a rate limit or a dead credential, all twenty-four failed
-    // identically. The script kept paying, minutes apart, for the same answer. That is where $20
-    // went.
-    //
-    // Retrying is not this script's decision to make. It cannot see the quota, the account state,
-    // or whether the owner still wants the work. THE AGENT THAT SPAWNED US DECIDES: we do the one
-    // thing we were asked to do, report exactly what happened, and stop. A failure is a failure.
-    if (ABORT.hit) {
-      console.log(`${slide.name}: dilewati — ${ABORT.why}`);
-      return false;
-    }
+    // SATU percobaan. Skrip ini tidak bisa melihat sisa kuota atau apakah pekerjaannya masih
+    // diinginkan — jadi keputusan mengulang milik agent yang memanggil, bukan milik skrip.
+    if (ABORT.hit) { console.log(`${slide.name}: dilewati — ${ABORT.why}`); return false; }
     if (sessionsUsed >= MAX_SESSIONS) {
-      ABORT.hit = true;
-      ABORT.why = `batas ${MAX_SESSIONS} sesi codex tercapai`;
-      console.log(`${slide.name}: dilewati — ${ABORT.why}`);
-      return false;
+      ABORT.hit = true; ABORT.why = `batas ${MAX_SESSIONS} sesi tercapai`;
+      console.log(`${slide.name}: dilewati — ${ABORT.why}`); return false;
     }
     sessionsUsed += 1;
     const r = await runCodex(slide, plan, total);
-    if (r.ok) {
-      console.log(`${slide.name}: ok`);
-      return true;
-    }
-    // A refusal that will hit every other slide identically stops the whole run at once, so a
-    // dead credential costs one session instead of eight.
-    if (r.limited || /No active credentials|Missing environment variable|ECONNREFUSED|Payment Required/i.test(r.why || "")) {
-      ABORT.hit = true;
-      ABORT.why = r.why || "codex menolak";
-      console.log(`ABORT — ${ABORT.why}. Sisa slide tidak dicoba (hemat kuota).`);
+    if (r.ok) { console.log(`${slide.name}: ok`); return true; }
+    if (r.limited || /No active credentials|Missing environment|ECONNREFUSED|Payment Required/i.test(r.why || "")) {
+      ABORT.hit = true; ABORT.why = r.why || "codex menolak";
+      console.log(`ABORT — ${ABORT.why}. Sisa slide tidak dicoba.`);
       reapAll();
     }
     console.log(`${slide.name}: FAILED — ${r.why}`);
     return false;
   }
 
-  // THE CLOSING IS NO LONGER GENERATED. It is rendered by scripts/make-closing.mjs from five
-  // fixed layouts, because every element on it — ground, headline, mascot, device, badges, kicker —
-  // is already ours and already fixed. Asking a model to draw it could only add variance, and it
-  // did: across 473 closings, 451 had the headline running into the phone column and 314 carried a
-  // corner logo that was supposed to be gone. Sending it to codex also made it the slide that held
-  // up the most re-rolls. Skipping it here removes the defect class instead of gating it.
-  // --slide N renders ONE slide and stops.
-  //
-  // A deck is eight billed image calls. When the owner asks for one image to look at, rendering all
-  // eight is not thoroughness, it is spending eight times what the question needed — and I did it
-  // repeatedly while iterating on the prompt. One means one.
+  // --slide N: satu slide saja. Merender deck penuh untuk menjawab "tunjukkan satu gambar"
+  // berarti membayar 8x dari yang diminta.
   const only = (() => {
     const i = process.argv.indexOf("--slide");
     return i >= 0 && process.argv[i + 1] ? Number(process.argv[i + 1]) : null;
   })();
-
-  let generatable = plan.slides.filter((s) => s.kind !== "closing");
+  // Closing tidak lagi digenerate: dirender lokal oleh make-closing.mjs dari 5 tata letak tetap.
+  let todo = plan.slides.filter((s) => s.kind !== "closing");
   if (only) {
-    generatable = generatable.filter((s) => plan.slides.indexOf(s) + 1 === only);
-    if (!generatable.length) { console.error(`--slide ${only}: tidak ada slide itu (atau itu closing)`); process.exit(1); }
-    console.log(`--slide ${only}: hanya merender 1 slide, bukan ${plan.slides.length}`);
+    todo = todo.filter((s) => plan.slides.indexOf(s) + 1 === only);
+    if (!todo.length) { console.error(`--slide ${only}: tidak ada`); process.exit(1); }
+    console.log(`--slide ${only}: 1 slide saja`);
   }
-  const results = await Promise.all(generatable.map((s) => genSlide(s)));
-  // render the closing deterministically, from the plan's own headline
-  const closing = only ? null : plan.slides.find((s) => s.kind === "closing");
-  if (closing) {
-    const m = /HEADLINE:\s*"([^"]*)"/i.exec(closing.brief || "");
-    const head = (m ? m[1] : (closing.brief || "")).trim().slice(0, 120);
-    const n = String(plan.slides.indexOf(closing) + 1).padStart(2, "0");
-    const out = path.join(OUT_DIR, `${n}-closing.png`);
-    const seed = path.basename(path.dirname(PLAN_PATH));   // item-XXXX -> stable per carousel
-    const r = spawnSync(process.execPath, [path.join(HERE_DIR, "make-closing.mjs"), head, out,
-      "--kicker", String(plan.kicker || ""), "--seed", seed], { encoding: "utf8" });
-    if (r.status !== 0) console.error(`closing: FAILED — ${(r.stderr || "").slice(-300)}`);
-    else console.log((r.stdout || "").trim());
-  }
+  const results = await Promise.all(todo.map((s) => genSlide(s)));
 
+  if (!only) {
+    const cl = plan.slides.find((s) => s.kind === "closing");
+    if (cl) {
+      const m = /HEADLINE:\s*"([^"]*)"/i.exec(cl.brief || "");
+      const head = (m ? m[1] : (cl.brief || "")).trim().slice(0, 120);
+      const n = String(plan.slides.indexOf(cl) + 1).padStart(2, "0");
+      const r = spawnSync(process.execPath,
+        [path.join(HERE, "make-closing.mjs"), head, path.join(OUT_DIR, `${n}-closing.png`),
+         "--kicker", String(plan.kicker || ""), "--seed", path.basename(path.dirname(PLAN_PATH))],
+        { encoding: "utf8" });
+      console.log((r.status === 0 ? (r.stdout || "").trim() : `closing: FAILED — ${(r.stderr||"").slice(-200)}`));
+    }
+  }
   const ok = results.filter(Boolean).length;
   console.log(`generated ${ok}/${total} raw slides -> ${OUT_DIR}`);
   if (ok < total) process.exit(1);
