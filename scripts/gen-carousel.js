@@ -54,6 +54,22 @@ const IMAGE_REASONING_EFFORT = process.env.CAROUSEL_IMAGE_REASONING_EFFORT || "l
 
 // ---- fixed prompt blocks (operative copy — see references/styles.md) ------
 
+// Every codex child we spawn, so we can take them with us. A billed API session that outlives the
+// process that asked for it is money burning with nobody reading the output.
+const LIVE = new Set();
+const reapAll = () => {
+  for (const c of LIVE) {
+    // negative pid = the whole process group, which is what actually stops codex and its helpers
+    try { process.kill(-c.pid, "SIGKILL"); } catch { try { c.kill("SIGKILL"); } catch {} }
+  }
+  LIVE.clear();
+};
+process.on("exit", reapAll);
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(sig, () => { reapAll(); process.exit(1); });
+}
+process.on("uncaughtException", (e) => { reapAll(); console.error(e); process.exit(1); });
+
 const HARD_RULE = [
   "!!! ABSOLUTE RULE — READ FIRST !!!",
   // A cover once shipped with its headline set in DARK TEAL on the dark green ground: the words were
@@ -448,8 +464,23 @@ function runCodex(slide, plan, total) {
     const child = spawn("codex", args, {
       cwd: OUT_DIR,
       env: { ...process.env, NO_COLOR: "1" },
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      // OWN PROCESS GROUP, so we can kill the whole family in one call.
+      // `codex` is not one process — it spawns helpers of its own. Killing just the pid we hold
+      // left the helpers running: a test that started 3 codex processes still had 2 alive after
+      // the parent was killed. detached:true puts the whole tree in its own group, and a negative
+      // pid signals the group. (We never unref it, so this does NOT background the child.)
+      detached: true,
     });
+    // EVERY CODEX CHILD IS TRACKED SO NONE CAN OUTLIVE US.
+    //
+    // These are billed API sessions. When this process died — killed, timed out, or its parent
+    // runner reaped — the codex children kept going, and the 9-minute SIGKILL below died with us,
+    // so nothing was left to stop them. The owner found gpt-5.5 sessions still burning tokens in
+    // the 9router dashboard hours later, with nobody reading a single byte of their output. Two of
+    // them had been running for THIRTEEN HOURS.
+    LIVE.add(child);
+    child.on("close", () => LIVE.delete(child));
 
     // *** DRAIN THE PIPES. THIS IS NOT OPTIONAL. ***
     // We open stdout/stderr as pipes, so SOMETHING must read them. `codex exec` is verbose; once it
@@ -470,7 +501,7 @@ function runCodex(slide, plan, total) {
       resolve({ ok: false, limited: false, why: `cannot spawn codex: ${e.message}` });
     });
 
-    const timer = setTimeout(() => child.kill("SIGKILL"), 9 * 60 * 1000);
+    const timer = setTimeout(() => { try { process.kill(-child.pid, "SIGKILL"); } catch { child.kill("SIGKILL"); } }, 9 * 60 * 1000);
     child.on("close", async () => {
       clearTimeout(timer);
       let ok = false;
@@ -556,10 +587,25 @@ async function main() {
   // did: across 473 closings, 451 had the headline running into the phone column and 314 carried a
   // corner logo that was supposed to be gone. Sending it to codex also made it the slide that held
   // up the most re-rolls. Skipping it here removes the defect class instead of gating it.
-  const generatable = plan.slides.filter((s) => s.kind !== "closing");
+  // --slide N renders ONE slide and stops.
+  //
+  // A deck is eight billed image calls. When the owner asks for one image to look at, rendering all
+  // eight is not thoroughness, it is spending eight times what the question needed — and I did it
+  // repeatedly while iterating on the prompt. One means one.
+  const only = (() => {
+    const i = process.argv.indexOf("--slide");
+    return i >= 0 && process.argv[i + 1] ? Number(process.argv[i + 1]) : null;
+  })();
+
+  let generatable = plan.slides.filter((s) => s.kind !== "closing");
+  if (only) {
+    generatable = generatable.filter((s) => plan.slides.indexOf(s) + 1 === only);
+    if (!generatable.length) { console.error(`--slide ${only}: tidak ada slide itu (atau itu closing)`); process.exit(1); }
+    console.log(`--slide ${only}: hanya merender 1 slide, bukan ${plan.slides.length}`);
+  }
   const results = await Promise.all(generatable.map((s) => genSlide(s)));
   // render the closing deterministically, from the plan's own headline
-  const closing = plan.slides.find((s) => s.kind === "closing");
+  const closing = only ? null : plan.slides.find((s) => s.kind === "closing");
   if (closing) {
     const m = /HEADLINE:\s*"([^"]*)"/i.exec(closing.brief || "");
     const head = (m ? m[1] : (closing.brief || "")).trim().slice(0, 120);
